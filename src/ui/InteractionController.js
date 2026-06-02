@@ -15,7 +15,7 @@ export class InteractionController {
     this.pointer = new THREE.Vector2();
     this.drag = null;       // { mesh, index, mode:'rotate'|'translate', lastX, lastY, planeZ }
     this.hovered = null;
-    this.turn = new Map();  // index -> { yaw, pitch } 턴테이블 누적각(롤 없음)
+    this.turn = new Map();  // index -> { deg } z축 누적 회전각(도)
     this.dom = renderer.renderer.domElement;
     const dom = this.dom;
     dom.addEventListener('pointerdown', (e) => this._down(e));
@@ -114,12 +114,18 @@ export class InteractionController {
     }
   }
 
+  // 드래그 시작 시점의 메시 z축 회전(rad)을 deg로 — turn Map에 누적 기준값이 없을 때만 사용.
+  _initialRotDeg(idx) {
+    const mesh = this.drag ? this.drag.mesh : null;
+    return mesh ? (mesh.rotation.z * 180) / Math.PI : 0;
+  }
+
   _notify(mesh, index) {
-    // 회전은 메시 quaternion을 그대로 상태로 통지(쿼터니언이 단일 진실원).
-    const q = mesh.quaternion;
+    // iteration-2: 회전은 z축 deg(number) 단일 진실원. translate 통지에서도 현재 z 회전을
+    // 숫자로 함께 보내 회전 상태가 유실되지 않게 한다(_occluders는 number rot만 적용).
     const clamped = this.onChange(index, {
       pos: [mesh.position.x, mesh.position.y, mesh.position.z],
-      rot: [q.x, q.y, q.z, q.w],
+      rot: (mesh.rotation.z * 180) / Math.PI,
     });
     // pos는 클램프 결과만 메시에 반영(물리=시각 일치). 회전은 readback하지 않는다.
     if (clamped && clamped.pos) {
@@ -133,40 +139,21 @@ export class InteractionController {
     const mesh = d.mesh;
 
     if (d.mode === 'rotate') {
-      // 아크볼(arcball) 회전: 물체 위에 가상의 구를 두고, 잡은 점이 마우스를 따라오도록 회전.
-      //  - 물체 오른쪽을 잡고 위로 올리면 → 시선축 회전(화면에서 2D 돌리듯).
-      //  - 어떤 카메라 각도에서도 "보이는 대로" 직관적(시점 상대). 절대 매핑이라 되감으면 원위치(드리프트 없음).
-      if (!d.q0) {
-        d.q0 = mesh.quaternion.clone();
-        const cam = this.renderer.camera;
-        cam.updateMatrixWorld();
-        mesh.updateWorldMatrix(true, false);
-        // 가상 구를 물체 위치/크기에 맞춤 → 물체 가장자리를 잡으면 구의 적도(=시선축 2D 회전),
-        // 중심을 잡으면 텀블. 중심은 메시 월드 위치, 반경은 지오메트리 bounding sphere에서 견고하게 계산.
-        const center = mesh.getWorldPosition(new THREE.Vector3());
-        if (!mesh.geometry.boundingSphere) mesh.geometry.computeBoundingSphere();
-        const sc = Math.max(mesh.scale.x, mesh.scale.y, mesh.scale.z) || 1;
-        const radiusWorld = mesh.geometry.boundingSphere.radius * sc;
-        const right = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 0);
-        const c = center.clone().project(cam);
-        const edge = center.clone().addScaledVector(right, radiusWorld).project(cam);
-        d.cx = (c.x * 0.5 + 0.5) * window.innerWidth;
-        d.cy = (-c.y * 0.5 + 0.5) * window.innerHeight;
-        const ex = (edge.x * 0.5 + 0.5) * window.innerWidth;
-        const ey = (-edge.y * 0.5 + 0.5) * window.innerHeight;
-        d.R = Math.max(40, Math.hypot(ex - d.cx, ey - d.cy)); // 물체 화면 반경(px), 최소 40px
-        d.v0 = this._ballVec(e.clientX, e.clientY, d);
-      }
-      const v1 = this._ballVec(e.clientX, e.clientY, d);
-      const axis = new THREE.Vector3().crossVectors(d.v0, v1); // 아이(eye) 공간 회전축
-      const len = axis.length();
-      if (len > 1e-6) {
-        const angle = Math.atan2(len, d.v0.dot(v1));
-        axis.normalize().applyQuaternion(this.renderer.camera.quaternion); // eye→world
-        const qDelta = new THREE.Quaternion().setFromAxisAngle(axis, angle);
-        mesh.quaternion.copy(qDelta).multiply(d.q0).normalize();
-        this._notify(mesh, d.index);
-      }
+      // iteration-2: z축(화면 평면) 1자유도 회전만 허용 — compound(L/T/notch) part posRel은
+      // z축 회전만 합성하므로 yaw/pitch가 들어오면 실루엣이 깨진다.
+      // 마우스 x 이동(px) 누적 → z축 회전(deg). 감도 0.6 deg/px, 우측 드래그 = +z(반시계).
+      const dxPx = e.clientX - d.lastX;
+      d.lastX = e.clientX;
+      const idx = d.index;
+      const cur = this.turn.get(idx) || { deg: this._initialRotDeg(idx) };
+      cur.deg = (cur.deg + dxPx * 0.6) % 360;
+      this.turn.set(idx, cur);
+      // 메시 즉시 시각 반영 (Euler z → quaternion 동기화됨)
+      mesh.rotation.set(0, 0, (cur.deg * Math.PI) / 180);
+      this.onChange(idx, {
+        pos: [mesh.position.x, mesh.position.y, mesh.position.z],
+        rot: cur.deg,    // ★ 숫자(deg)만 통지 — 배열/쿼터니언 미통지
+      });
     } else {
       // translate: 물체 깊이에 평행한 벽-평면(z=planeZ)에서 레이 교차점으로 이동.
       this._ndc(e);
