@@ -26,6 +26,22 @@ export function projectVertex(P, light) {
 }
 
 /**
+ * directional 광원을 벽 앞에 둘 때의 광원 위치.
+ * 그림자에 영향을 주는 건 (target - position) 방향뿐이므로, 물리 투영(projectVertex,
+ * light.vec)과 시각 그림자(Three.js dirLight)가 일치하려면 position = target - normalize(vec)*dist.
+ * 빛이 벽(z<0)으로 들어가는 한(vec.z<0) z성분은 자동으로 양수(벽 앞)가 된다.
+ * @param {[number,number,number]} vec  빛이 향하는 방향(정규화 불필요)
+ * @param {[number,number,number]} center  target(= 벽 중심, z=0)
+ * @param {number} dist  광원을 둘 거리
+ * @returns {[number,number,number]} 광원 위치
+ */
+export function directionalLightPosition(vec, center, dist) {
+  const n = Math.hypot(vec[0], vec[1], vec[2]) || 1;
+  const d = [vec[0] / n, vec[1] / n, vec[2] / n];
+  return [center[0] - d[0] * dist, center[1] - d[1] * dist, center[2] - d[2] * dist];
+}
+
+/**
  * Andrew's monotone chain. 입력 점들의 2D convex hull (CCW, 중복 꼭짓점 없음).
  * @param {Array<[number,number]>} points
  * @returns {Array<[number,number]>}

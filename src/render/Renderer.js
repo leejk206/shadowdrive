@@ -3,6 +3,7 @@
 // 뒷벽에 부드러운 실그림자를 드리운다. 그림자 상단 윤곽이 "도로".
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { directionalLightPosition } from '../core/mathx.js';
 
 export class Renderer {
   constructor(container) {
@@ -31,6 +32,13 @@ export class Renderer {
     this.controls.enablePan = false;
     this.controls.mouseButtons = { LEFT: null, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
     this.controls.touches = { ONE: null, TWO: THREE.TOUCH.DOLLY_ROTATE };
+    // 카메라가 벽 뒤로 넘어가지 못하게 궤도를 벽 앞 반구로 제한.
+    // 방위각 |az| < 90° → 카메라는 항상 타깃의 +z(벽 앞)쪽. (여유 0.08rad로 벽과 정확히 평행=엣지온 방지.)
+    // 극각도 위/아래 극단(벽을 스치며 뒤집히는 시점)도 살짝 안쪽으로 묶는다.
+    this.controls.minAzimuthAngle = -Math.PI / 2 + 0.08;
+    this.controls.maxAzimuthAngle = Math.PI / 2 - 0.08;
+    this.controls.minPolarAngle = 0.18;
+    this.controls.maxPolarAngle = Math.PI - 0.18;
 
     // 채움광: 그림자가 순흑이 되지 않게 하되, 너무 밝아 그림자를 씻어내지 않도록 절제.
     this.hemi = new THREE.HemisphereLight(0x3a2c22, 0x0a0807, 0.22);
@@ -200,40 +208,46 @@ export class Renderer {
     this.controls.update();
   }
 
+  // 그림자 자동차: 벽 평면 위 납작한 측면 실루엣.
+  // 도로 그림자와 같은 평면(z≈벽 앞)에 두어 시차가 없고(3D 박스일 때 생기던 어긋남 제거),
+  // 콜라이더 floor y와 정확히 일치한다. 창문은 '빛 통과' 컷아웃(Shape hole) →
+  // 밝은 벽이 비쳐 어두운 도로 위에서도 차로 인식된다.
   _makeCar() {
     const g = new THREE.Group();
+    // 도로 castShadow와 같은 톤의 어두운 실루엣(불투명). pivot: y=0 = 노면 접촉선.
+    const mat = new THREE.MeshBasicMaterial({ color: 0x130c06 });
 
-    const body = new THREE.Mesh(
-      new THREE.BoxGeometry(0.9, 0.32, 0.5),
-      new THREE.MeshStandardMaterial({ color: 0xff5a3c, emissive: 0x5a1500, roughness: 0.4 })
-    );
-    body.position.y = 0.08;
-    body.castShadow = true;
+    // 측면 차체 외곽. 길이 ~0.96(콜라이더 L=1), 높이 ~0.5.
+    const body = new THREE.Shape();
+    body.moveTo(0.48, 0.12);
+    body.lineTo(0.48, 0.27);
+    body.lineTo(0.30, 0.30);
+    body.lineTo(0.18, 0.50);   // 앞 유리 상단
+    body.lineTo(-0.16, 0.50);  // 지붕
+    body.lineTo(-0.30, 0.30);
+    body.lineTo(-0.48, 0.27);
+    body.lineTo(-0.48, 0.12);
+    body.closePath();
 
-    const cabin = new THREE.Mesh(
-      new THREE.BoxGeometry(0.5, 0.26, 0.45),
-      new THREE.MeshStandardMaterial({ color: 0xff7a5c, emissive: 0x401000, roughness: 0.4 })
-    );
-    cabin.position.set(-0.05, 0.34, 0);
-    cabin.castShadow = true;
+    // 창문 컷아웃 2개(앞/뒤) — hole로 추가하면 빛이 통과해 밝게 보인다.
+    const front = new THREE.Path();
+    front.moveTo(0.03, 0.32); front.lineTo(0.145, 0.32); front.lineTo(0.105, 0.46); front.lineTo(0.03, 0.46); front.closePath();
+    const rear = new THREE.Path();
+    rear.moveTo(-0.02, 0.32); rear.lineTo(-0.02, 0.46); rear.lineTo(-0.125, 0.46); rear.lineTo(-0.155, 0.32); rear.closePath();
+    body.holes.push(front, rear);
 
-    const wheelGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.18, 16);
-    wheelGeo.rotateX(Math.PI / 2);   // 축이 z(차폭) 방향이 되도록
-    const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.7, emissive: 0x000000 });
+    g.add(new THREE.Mesh(new THREE.ShapeGeometry(body), mat));
 
-    const wheels = [];
-    for (const [wx, wz] of [[ 0.32, 0.22], [ 0.32, -0.22], [-0.32, 0.22], [-0.32, -0.22]]) {
-      const w = new THREE.Mesh(wheelGeo, wheelMat);
-      w.position.set(wx, -0.08, wz);   // 차체 바닥 라인
-      w.castShadow = true;
-      wheels.push(w);
+    // 바퀴 2개(실루엣 일부). 노면 접촉 위해 중심 y = 반지름.
+    const r = 0.13;
+    for (const wx of [0.28, -0.28]) {
+      const w = new THREE.Mesh(new THREE.CircleGeometry(r, 24), mat);
+      w.position.set(wx, r, 0.001);
       g.add(w);
     }
 
-    g.add(body, cabin);
-    // pivot 기준: y=0 이 "노면 접촉선". setCar(x, y, slope)에서 (x, y) 를 차 발 위치로 사용.
-    g.userData.halfHeight = 0.2;     // 호환용 (기존 setCar 사용처)
-    g.userData.wheels = wheels;
+    g.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; o.renderOrder = 6; } });
+    g.userData.halfHeight = 0.25; // 호환용
     return g;
   }
 
@@ -256,9 +270,13 @@ export class Renderer {
       this.rimLight.target.position.set(cx, cy, 0);
     } else {
       // directional: vec = 빛이 향하는 방향. 광원은 -vec 방향 멀리에 둔다.
+      // 시각 그림자(섀도맵)의 광선 방향 = target - position 이 물리 투영(light.vec)과
+      // 정확히 일치하도록 position을 잡는다. (z성분에 임의 오프셋을 더하면 방향이 틀어져
+      // 차가 보이는 그림자 아래에 걸친다 — 회귀 방지: test/lightDirection.test.js)
       const d = new THREE.Vector3(light.vec[0], light.vec[1], light.vec[2]).normalize();
       const dist = this._wall ? this._wall.width : 20;
-      this.dirLight.position.set(cx - d.x * dist, cy - d.y * dist, Math.max(8, dist) - d.z * dist);
+      const lp = directionalLightPosition(light.vec, [cx, cy, 0], dist);
+      this.dirLight.position.set(lp[0], lp[1], lp[2]);
       this.dirLight.target.position.set(cx, cy, 0);
       this.dirLight.intensity = 2.2;
       const half = (this._wall ? Math.max(this._wall.width, this._wall.height) : 12) * 0.8;
@@ -373,7 +391,8 @@ export class Renderer {
     this.ceilingGroup.clear();
   }
 
-  // 떠 있는 텍스트 라벨(CanvasTexture Sprite).
+  // 벽에 박힌(2D) 텍스트 라벨. 빌보드 Sprite가 아니라 벽 평면에 놓인 텍스처 메시 →
+  // 카메라를 돌리면 벽에 칠해진 글자처럼 함께 기울어진다(떠 보이지 않음).
   _makeLabel(text, hexColor) {
     const c = document.createElement('canvas');
     c.width = 256; c.height = 96;
@@ -389,25 +408,43 @@ export class Renderer {
     const tex = new THREE.CanvasTexture(c);
     tex.minFilter = THREE.LinearFilter;
     tex.colorSpace = THREE.SRGBColorSpace;
-    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
-    sprite.scale.set(1.8, 0.68, 1);
-    sprite.renderOrder = 10;
-    return sprite;
+    const mesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.8, 0.675),
+      new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false })
+    );
+    mesh.renderOrder = 8;
+    return mesh;
   }
 
   // start: 작은 출발 패드. goal: 반투명 골드 목표 "영역"(반폭 hw, 반높이 hh).
   renderPads(start, goal, hw = 0.6, hh = 0.8) {
     this.padGroup.clear();
 
-    // START — iteration-3: 발판(footing) 없음. 위치 라벨만 표시(그림자 안 만듦).
+    // START — iteration-3: 발판(footing) 없음. 벽에 박힌 2D 발사점 마커 + 라벨(그림자 안 만듦).
     {
       const [px, py] = start;
+      // 발사점 표식: 벽면 반투명 그린 디스크 + 밝은 링 윤곽(2D, 벽 평면).
+      const disc = new THREE.Mesh(
+        new THREE.CircleGeometry(0.34, 32),
+        new THREE.MeshBasicMaterial({ color: 0x35d97a, transparent: true, opacity: 0.20, depthWrite: false }));
+      disc.position.set(px, py, 0.02);
+      disc.renderOrder = 5;
+      this.padGroup.add(disc);
+
+      const ring = new THREE.Mesh(
+        new THREE.RingGeometry(0.32, 0.38, 32),
+        new THREE.MeshBasicMaterial({ color: 0x8effb8, transparent: true, opacity: 0.95,
+          side: THREE.DoubleSide, depthWrite: false }));
+      ring.position.set(px, py, 0.03);
+      ring.renderOrder = 7;
+      this.padGroup.add(ring);
+
       const lbl = this._makeLabel('START', '#8effb8');
-      lbl.position.set(px, py + 0.9, 0.5);
+      lbl.position.set(px, py + 0.95, 0.03);
       this.padGroup.add(lbl);
     }
 
-    // GOAL — 벽면(z≈0.04)에 (2*hw)×(2*hh) 반투명 골드 존 + 밝은 윤곽선
+    // GOAL — 벽면(z≈0.04)에 (2*hw)×(2*hh) 반투명 골드 존 + 밝은 윤곽선 (모두 벽 평면 2D)
     {
       const [gx, gy] = goal;
       const w = 2 * hw, h = 2 * hh;
@@ -428,14 +465,15 @@ export class Renderer {
       this.padGroup.add(edges);
 
       const lbl = this._makeLabel('GOAL', '#ffe08a');
-      lbl.position.set(gx, gy + hh + 0.6, 0.5);
+      lbl.position.set(gx, gy + hh + 0.6, 0.03);
       this.padGroup.add(lbl);
     }
   }
 
   setCar(x, y, slopeRad = 0) {
     // y 는 floor 윤곽선상의 노면 점. 차 그룹의 발(y=0)이 (x, y)에 오도록 배치.
-    this.car.position.set(x, y, 0.3);
+    // 벽 평면 바로 앞(z≈0.03)에 납작하게 둔다 → 도로 그림자와 같은 평면, 시차 없음.
+    this.car.position.set(x, y, 0.03);
     this.car.rotation.z = slopeRad;   // 화면 평면 회전 = 피칭(2.5D 정면뷰)
     this.car.visible = true;
   }
