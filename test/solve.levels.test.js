@@ -13,14 +13,24 @@ function load(id) {
 function solvable(id, opts = {}) {
   const lv = load(id);
   const sm = new GameStateMachine(lv);
-  const xs = opts.xs || [lv.wall.width * 0.35, lv.wall.width * 0.5, lv.wall.width * 0.65];
+  const xs = opts.xs || [lv.wall.width * 0.25, lv.wall.width * 0.4, lv.wall.width * 0.5, lv.wall.width * 0.6, lv.wall.width * 0.75];
   const ys = opts.ys || [0.2, 0.5, 1.0, 1.5];
   const zs = opts.zs || [4, 6, 8, 10];
-  const rots = opts.rots || [0, 10, 20, -10, -20];
+  const rots = opts.rots || [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330];
   const n = sm.movables.length;
-  // 플레이어 배치 시뮬레이션: 가동 물체들을 xs 격자 위에 분산 배치(서로 다른 x)하고
-  // 공통 (y,z,rot)을 거칠게 스윕. 신물리(탄도+그림자길) 아래 CLEAR 배치가 하나라도 있으면 풀림.
+  // 플레이어 배치 시뮬레이션: 공통 (y,z,rot)을 거칠게 스윕.
+  //  - 가동 물체 1개: x를 전 격자에 걸쳐 단독 스윕(목표가 좌/우 어디든 도달).
+  //  - 여러 개: xs 격자 위에 분산 배치(서로 다른 x)해 합성 길을 만든다.
+  // 신물리(탄도+그림자길) 아래 CLEAR 배치가 하나라도 있으면 풀림.
   for (const y of ys) for (const z of zs) for (const rot of rots) {
+    if (n === 1) {
+      for (const x of xs) {
+        sm.reset();
+        sm.setMovableTransform(0, { pos: [x, y, z], rot: sm.movables[0].role === 'ceiling' ? 0 : rot });
+        if (sm.go().result === 'CLEAR') return true;
+      }
+      continue;
+    }
     sm.reset();
     for (let k = 0; k < n; k++) {
       const x = xs[Math.min(k, xs.length - 1)] + k * 0.01;
