@@ -2,6 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { GameStateMachine } from '../src/core/GameStateMachine.js';
 
+// (테스트 끝에서 사용) compound shape expand 검증용 별도 레벨
+
 // 최소 레벨: 시작-목표 사이 갭, 가동 막대 1개로 메우면 CLEAR
 const level = {
   id: 'T', light: { type: 'directional', vec: [0, 0, -1] },
@@ -75,4 +77,29 @@ test('FAIL 후 reset은 PLAN으로 복귀하고 배치 유지', () => {
   sm.reset();
   assert.equal(sm.phase, 'PLAN');
   assert.deepEqual(sm.movables[0].pos, [10, 0.2, 3]); // 배치 유지
+});
+
+test('compound shape(L)는 _occluders에서 2 parts로 expand되고 회전 합성', () => {
+  const lv = {
+    id: 'C', light: { type: 'directional', vec: [0, 0, -1] },
+    wall: { width: 10, height: 6 },
+    start: [0, 0], goal: [9, 0],
+    fixedOccluders: [],
+    movableOccluders: [
+      { shape: 'L', role: 'floor', size: [2, 2, 1], spawn: [5, 2, 3], allow: { translate: true, rotate: true } },
+    ],
+    params: { carSpeed: 4, gravity: 9.8, maxClimbDeg: 35, gapPassRatio: 0.8 },
+  };
+  const sm = new GameStateMachine(lv);
+  const occs = sm._occluders();
+  assert.equal(occs.length, 1);
+  assert.equal(occs[0].parts.length, 2);             // L = 2 bar parts
+  for (const p of occs[0].parts) assert.equal(p.shape, 'bar');
+
+  // 90° 회전 후 part posRel 도 회전돼 있어야 한다 (가로/세로 part가 서로 자리 교환)
+  sm.setMovableTransform(0, { pos: [5, 2, 3], rot: 90 });
+  const occs2 = sm._occluders();
+  assert.equal(occs2[0].parts.length, 2);
+  // 두 part의 part.rot 는 occluder rot(90) + posRel 회전이 합성된 결과. 합산 rot는 90.
+  for (const p of occs2[0].parts) assert.equal(p.rot, 90);
 });

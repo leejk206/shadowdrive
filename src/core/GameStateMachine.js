@@ -2,6 +2,7 @@
 import { projectScene } from './ShadowProjector.js';
 import { buildHeightfield } from './ColliderBuilder.js';
 import { simulate } from './CarSimulator.js';
+import { expandCompound } from './shapes.js';
 
 const SAMPLES = 200;
 
@@ -19,14 +20,33 @@ export class GameStateMachine {
 
   /** 현재 씬의 오클루더 리스트(고정+가동)를 projector 입력 형태로 */
   _occluders() {
-    const fixed = this.level.fixedOccluders.map((f) => ({
-      parts: [{ shape: f.shape, size: f.size, pos: f.pos, rot: f.rot || 0 }],
-      role: f.role || 'floor',
-    }));
-    const mov = this.movables.map((m) => ({
-      parts: [{ shape: m.shape, size: m.size, pos: m.pos, rot: m.rot }],
-      role: m.role,
-    }));
+    const buildOcc = (src) => {
+      // src = { shape, role, size, pos, rot }
+      const parts0 = expandCompound(src.shape, src.size);
+      const rotDeg = typeof src.rot === 'number' ? src.rot : 0;
+      const r = (rotDeg * Math.PI) / 180;
+      const cs = Math.cos(r), sn = Math.sin(r);
+      const parts = parts0.map((p) => {
+        const [pxL, pyL, pzL] = p.posRel;
+        // occluder 로컬 (x,y)를 z축 회전 후 occluder 월드 위치에 합성
+        const rx = cs * pxL - sn * pyL;
+        const ry = sn * pxL + cs * pyL;
+        return {
+          shape: p.shape,
+          size: p.size,
+          pos: [src.pos[0] + rx, src.pos[1] + ry, src.pos[2] + pzL],
+          rot: rotDeg + p.rotRel,
+        };
+      });
+      return { parts, role: src.role || 'floor' };
+    };
+
+    const fixed = this.level.fixedOccluders.map((f) =>
+      buildOcc({ shape: f.shape, role: f.role, size: f.size, pos: f.pos, rot: f.rot || 0 })
+    );
+    const mov = this.movables.map((m) =>
+      buildOcc({ shape: m.shape, role: m.role, size: m.size, pos: m.pos, rot: m.rot })
+    );
     return fixed.concat(mov);
   }
 
