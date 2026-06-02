@@ -94,3 +94,54 @@ export function transformVerts(verts, pos, rot) {
     m20 * x + m21 * y + m22 * z + tz,
   ]);
 }
+
+/**
+ * Compound shape를 bar parts 배열로 분해.
+ * 각 part는 occluder 로컬 좌표(occluder 중심을 원점으로) 기준 posRel/rotRel을 가진다.
+ * occluder 전체에 (pos, rot)이 적용되면 GameStateMachine 쪽에서 posRel을 함께 회전·평행이동.
+ * size는 occluder 전체 외접 bounding (sx, sy, sz). 내부 분해 비율은 하드코딩.
+ *
+ *   L  : ㄴ자 — 아래 가로 bar + 좌측 세로 bar. 두께 t = min(sx,sy) * 0.4
+ *   T  : ㅗ자(아래로 줄기) — 위 가로 bar + 중앙 세로 bar. 두께 t = min(sx,sy) * 0.4
+ *   notch: U자 — 아래 가로 bar + 좌 세로 bar + 우 세로 bar. 두께 t = min(sx,sy) * 0.35
+ *
+ * @param {'bar'|'prism'|'L'|'T'|'notch'} shape
+ * @param {[number,number,number]} size
+ * @returns {Array<{shape:'bar'|'prism', size:[number,number,number], posRel:[number,number,number], rotRel:number}>}
+ */
+export function expandCompound(shape, size) {
+  const [sx, sy, sz] = size;
+  if (shape === 'bar' || shape === 'prism') {
+    return [{ shape, size: [sx, sy, sz], posRel: [0, 0, 0], rotRel: 0 }];
+  }
+  if (shape === 'L') {
+    const t = Math.min(sx, sy) * 0.4;
+    return [
+      // 아래 가로 — y는 -sy/2 .. -sy/2 + t (중심 -sy/2 + t/2)
+      { shape: 'bar', size: [sx, t, sz], posRel: [0, -sy / 2 + t / 2, 0], rotRel: 0 },
+      // 좌측 세로 — x는 -sx/2 .. -sx/2 + t (중심 -sx/2 + t/2), y는 -sy/2..sy/2
+      { shape: 'bar', size: [t, sy, sz], posRel: [-sx / 2 + t / 2, 0, 0], rotRel: 0 },
+    ];
+  }
+  if (shape === 'T') {
+    const t = Math.min(sx, sy) * 0.4;
+    return [
+      // 위 가로 — y는 sy/2 - t .. sy/2 (중심 sy/2 - t/2)
+      { shape: 'bar', size: [sx, t, sz], posRel: [0, sy / 2 - t / 2, 0], rotRel: 0 },
+      // 중앙 세로 — x=0, y 전체. 두께 t.
+      { shape: 'bar', size: [t, sy, sz], posRel: [0, 0, 0], rotRel: 0 },
+    ];
+  }
+  if (shape === 'notch') {
+    const t = Math.min(sx, sy) * 0.35;
+    return [
+      // 아래 가로(바닥) — y는 -sy/2 .. -sy/2 + t (중심 -sy/2 + t/2)
+      { shape: 'bar', size: [sx, t, sz], posRel: [0, -sy / 2 + t / 2, 0], rotRel: 0 },
+      // 좌 기둥 — x는 -sx/2 .. -sx/2 + t, y 전체
+      { shape: 'bar', size: [t, sy, sz], posRel: [-sx / 2 + t / 2, 0, 0], rotRel: 0 },
+      // 우 기둥 — x는 sx/2 - t .. sx/2, y 전체
+      { shape: 'bar', size: [t, sy, sz], posRel: [ sx / 2 - t / 2, 0, 0], rotRel: 0 },
+    ];
+  }
+  throw new Error(`expandCompound: unsupported shape ${shape}`);
+}
