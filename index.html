@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>ShadowDrive</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #080606; }
+    #ui { position: fixed; left: 0; top: 0; padding: 10px 12px; color: #f0e6da;
+          font: 13px/1.5 system-ui, sans-serif; z-index: 10;
+          display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    #ui button { font: 13px system-ui; padding: 5px 12px; cursor: pointer;
+                 background: rgba(40,30,24,0.7); color: #ffd9a0;
+                 border: 1px solid rgba(255,178,77,0.4); border-radius: 5px; }
+    #ui button:hover { background: rgba(60,44,34,0.9); }
+    #levelLabel { font-weight: 600; color: #ffd9a0; }
+    #phase { font-weight: 700; letter-spacing: 0.5px; color: #ffd9a0; }
+    #hint { color: #b8a890; opacity: 0.8; font-size: 12px; }
+    #banner { position: fixed; left: 50%; top: 38%; transform: translateX(-50%);
+              color: #fff; font: 700 56px system-ui; display: none; z-index: 20;
+              text-shadow: 0 2px 16px rgba(0,0,0,0.8); }
+    #legend { position: fixed; right: 12px; bottom: 12px; z-index: 10;
+              padding: 9px 12px; border-radius: 7px;
+              background: rgba(20,15,12,0.7); color: #d8cbbb;
+              border: 1px solid rgba(255,178,77,0.15);
+              font: 11px/1.7 system-ui, sans-serif; }
+    #legend .sw { display: inline-block; width: 11px; height: 11px;
+                  border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+    #legend .row { white-space: nowrap; }
+  </style>
+  <script type="importmap">
+  { "imports": {
+      "three": "./vendor/three.module.js",
+      "three/addons/": "./vendor/three-addons/"
+  } }
+  </script>
+</head>
+<body>
+  <div id="ui">
+    <button id="go">Go</button>
+    <button id="reset">Reset</button>
+    <span id="levelLabel"></span>
+    <span id="phase"></span>
+    <span id="hint">drag: rotate obj · shift+drag: move · shift+wheel: depth · right-drag: orbit cam · wheel: zoom · space: Go · r: reset · 1-7: level</span>
+  </div>
+  <div id="legend">
+    <span class="row"><span class="sw" style="background:#ffb24d"></span>movable · drag to rotate</span><br>
+    <span class="row"><span class="sw" style="background:#6b7280"></span>fixed</span> &nbsp;
+    <span class="row"><span class="sw" style="background:#ffe6b0"></span>road</span><br>
+    <span class="row"><span class="sw" style="background:#33cc66"></span>start</span> &nbsp;
+    <span class="row"><span class="sw" style="background:#ffcc33"></span>goal</span>
+  </div>
+  <div id="banner"></div>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+.DS_Store
+node_modules/
+*.log
+*:Zone.Identifier
+shots/
+.playwright-mcp/

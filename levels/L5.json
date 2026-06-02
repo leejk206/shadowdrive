@@ -1,0 +1,84 @@
+{
+  "id": "L5",
+  "light": {
+    "type": "point",
+    "vec": [
+      9,
+      10,
+      14
+    ]
+  },
+  "wall": {
+    "width": 18,
+    "height": 9
+  },
+  "start": [
+    1,
+    0
+  ],
+  "goal": [
+    17,
+    0
+  ],
+  "fixedOccluders": [
+    {
+      "shape": "bar",
+      "role": "ceiling",
+      "size": [
+        6,
+        1,
+        1
+      ],
+      "pos": [
+        9,
+        1.3,
+        3
+      ],
+      "rot": 0
+    }
+  ],
+  "movableOccluders": [
+    {
+      "shape": "bar",
+      "role": "floor",
+      "size": [
+        6,
+        0.4,
+        1
+      ],
+      "spawn": [
+        3,
+        3,
+        4
+      ],
+      "allow": {
+        "translate": true,
+        "rotate": true
+      }
+    },
+    {
+      "shape": "bar",
+      "role": "floor",
+      "size": [
+        6,
+        0.4,
+        1
+      ],
+      "spawn": [
+        8,
+        3,
+        4
+      ],
+      "allow": {
+        "translate": true,
+        "rotate": true
+      }
+    }
+  ],
+  "params": {
+    "carSpeed": 4,
+    "gravity": 9.8,
+    "maxClimbDeg": 35,
+    "gapPassRatio": 2.5
+  }
+}

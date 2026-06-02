@@ -1,0 +1,50 @@
+{
+  "id": "L1",
+  "light": {
+    "type": "directional",
+    "vec": [
+      -0.45,
+      -0.5,
+      -1
+    ]
+  },
+  "wall": {
+    "width": 12,
+    "height": 6
+  },
+  "start": [
+    1,
+    0
+  ],
+  "goal": [
+    11,
+    0
+  ],
+  "fixedOccluders": [],
+  "movableOccluders": [
+    {
+      "shape": "bar",
+      "role": "floor",
+      "size": [
+        11,
+        0.4,
+        1
+      ],
+      "spawn": [
+        1,
+        2,
+        3
+      ],
+      "allow": {
+        "translate": true,
+        "rotate": true
+      }
+    }
+  ],
+  "params": {
+    "carSpeed": 4,
+    "gravity": 9.8,
+    "maxClimbDeg": 35,
+    "gapPassRatio": 2.5
+  }
+}
