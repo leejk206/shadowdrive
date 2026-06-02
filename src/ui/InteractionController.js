@@ -1,9 +1,8 @@
 // src/ui/InteractionController.js
 // PLAN 단계에서 가동 오클루더를 3D 조작:
 //  - hover: grab 커서 + emissive 부스트
-//  - 좌드래그: 트랙볼 회전(전체 3D) → 오일러[rx,ry,rz] 도로 통지
+//  - 좌드래그: 화면 평면(z축) 회전 → deg(number) 도로 통지
 //  - shift+좌드래그: 화면 평면(물체 깊이)에서 이동
-//  - 휠: 깊이(z) 조절
 // 변환은 onChange(index, {pos, rot}) 콜백으로 상태머신에 통지.
 import * as THREE from 'three';
 
@@ -32,11 +31,6 @@ export class InteractionController {
     dom.addEventListener('pointerleave', () => this._up());
     dom.addEventListener('wheel', (e) => this._wheel(e), { passive: false });
     window.addEventListener('contextmenu', (e) => { if (this.drag) e.preventDefault(); });
-    // shift를 누르는 동안 OrbitControls 줌을 끈다 → shift+휠은 물체 깊이만, 카메라 줌과 충돌 방지.
-    // (OrbitControls의 wheel 리스너가 먼저 등록되어 먼저 발화하므로 stopPropagation으로는 막을 수 없다.)
-    window.addEventListener('keydown', (e) => { if (e.key === 'Shift') this.renderer.controls.enableZoom = false; });
-    window.addEventListener('keyup', (e) => { if (e.key === 'Shift') this.renderer.controls.enableZoom = true; });
-    window.addEventListener('blur', () => { this.renderer.controls.enableZoom = true; });
   }
 
   // 레벨 전환 시 호출(현재 아크볼 방식은 드래그마다 시작 상태를 새로 잡으므로 별도 상태 불필요).
@@ -188,18 +182,8 @@ export class InteractionController {
   }
 
   _wheel(e) {
-    // shift+휠만 물체 깊이 조절. 일반 휠은 OrbitControls 줌으로 흘려보낸다(preventDefault 금지).
-    if (!e.shiftKey) return;
-    if (this.getPhase() !== 'PLAN') return;
-    // 드래그 중이 아니어도 hover된 메시에 적용 가능.
-    const mesh = this.drag ? this.drag.mesh : this.hovered;
-    const index = this.drag ? this.drag.index : (this.hovered ? this.hovered.userData.part.index : -1);
-    if (!mesh || index < 0) return;
-    e.preventDefault();
-    e.stopPropagation();
-    mesh.position.z += (e.deltaY < 0 ? 0.3 : -0.3);
-    if (this.drag) this.drag.planeZ = mesh.position.z;
-    this._notify(mesh, index);
-    this.renderer.render();
+    // iteration-2: depth 시스템 제거. 휠은 항상 OrbitControls(카메라 줌)에만 흘려보낸다.
+    // shift+휠 분기는 폐기.
+    return;
   }
 }
