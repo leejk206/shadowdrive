@@ -8,7 +8,7 @@ import { GameStateMachine } from '../src/core/GameStateMachine.js';
 const level = {
   id: 'T', light: { type: 'directional', vec: [0, 0, -1] },
   wall: { width: 10, height: 6 },
-  start: [0, 0], goal: [9, 0],
+  start: [0, 2], goal: [9, 0],   // iter-3: start는 공중 발사대(차가 그림자 도로로 낙하)
   fixedOccluders: [],
   movableOccluders: [
     { shape: 'bar', role: 'floor', size: [10, 0.4, 1], spawn: [4.5, 0, 3], allow: { translate: true, rotate: true } },

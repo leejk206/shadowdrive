@@ -78,3 +78,13 @@ test('iter-3: 공중 시작 후 받쳐줄 도로가 전혀 없으면 → FAIL "f
   assert.equal(r.result, 'FAIL');
   assert.match(r.reason, /fell/i);
 });
+
+test('iter-3: 발사대보다 높은 그림자 도로엔 위로 순간이동하지 않는다(장애물 충돌)', () => {
+  // start_x 마스킹(x<2 void), 그 직후 발사대(startY=3)보다 높은 도로 y=5.
+  // 공중에서 위로 솟은 그림자 면에 정면 충돌 → 위로 순간이동 금지.
+  const f = makeField(0, 16, 321, (x) => (x < 2) ? null : 5);
+  const r = simulate(f, params, { ...baseCar, startX: 1, startY: 3, goalX: 15 });
+  const maxY = Math.max(...r.trajectory.map(([, y]) => y));
+  assert.ok(maxY < 3.5, `car teleported up to y=${maxY}`);
+  assert.equal(r.result, 'FAIL');
+});

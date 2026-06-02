@@ -7,6 +7,7 @@ const DT = 0.008;     // 적분 시간 간격(초)
 const EPS = 1e-3;     // 경사 측정용 미소 거리
 const ACCEL = 3;      // 엔진 추력 계수 (목표 속도로 수렴)
 const SLOPE_CLAMP = 20; // 경사 클램프(수치 안정)
+const MAX_STEP_UP = 0.5; // 공중에서 올라탈 수 있는 floor 상승 한계(이상은 그림자 벽=장애물, 순간이동 금지)
 
 /** xs 격자에서 x에 해당하는 floor 값(선형보간, void면 null) */
 function floorAt(field, x) {
@@ -85,6 +86,8 @@ export function simulate(field, params, car) {
     // 1) 목표 도달?
     if (inGoal(x, y)) return clear('reached goal area');
 
+    const yPrev = y;   // 적분 전 높이(착지/충돌 판정용)
+
     // 2) 힘 적용
     const ghNow = floorAt(field, x);
     if (grounded && ghNow !== null) {
@@ -119,7 +122,17 @@ export function simulate(field, params, car) {
     // 4) 지면 구속
     const gh = floorAt(field, x);
     if (gh !== null && y <= gh) {
-      y = gh; grounded = true;
+      // grounded(연속 지면 추종)이면 그대로 따라간다(램프 등판 포함).
+      // 공중일 때는 floor가 직전 높이보다 MAX_STEP_UP 이내로만 위에 있을 때 올라탄다
+      //  - 위에서 낙하 착지(stepUp<0) · 소폭 턱(curb): 정상 착지
+      //  - 발사대보다 한참 높은 그림자 벽(stepUp 큼): 올라타지 않음 → 계속 비행하다 낙하
+      //    (iteration-3: "맨 위로 순간이동" 버그 차단. 그림자=장애물.)
+      const stepUp = gh - yPrev;
+      if (grounded || stepUp <= MAX_STEP_UP) {
+        y = gh; grounded = true;
+      } else {
+        grounded = false;
+      }
     } else {
       grounded = false; // 공중(볼록 입술 발사) 또는 void 위
     }
