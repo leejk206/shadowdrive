@@ -92,3 +92,76 @@ test('iter-3: 발사대보다 높은 그림자 도로엔 위로 순간이동하�
   assert.ok(maxY < 3.5, `car teleported up to y=${maxY}`);
   assert.equal(r.result, 'FAIL');
 });
+
+test('iter-3: 갭 발사 후 비행 높이 기준 작은 턱(≤MAX_STEP_UP)엔 정상 착지(과도한 차단 아님)', () => {
+  // 순간이동 차단(MAX_STEP_UP)이 "위에서 낙하 착지"까지 막으면 안 된다.
+  // 발사 도로(y=0) → 볼록 입술 → 갭 → 비행 중 차의 높이 부근(턱 작음) 착지 도로.
+  const f = makeField(0, 18, 721, (x) => {
+    if (x < 5) return 0;             // 발사 도로
+    if (x < 5.5) return (x - 5) * 1; // 볼록 입술 0→0.5
+    if (x < 7) return null;          // 갭
+    return 0.4;                      // 비행 높이와 비슷한 낮은 턱 → 착지 가능
+  });
+  const r = simulate(f, { ...params, carSpeed: 8 }, { ...baseCar, startX: 1, startY: 3, goalX: 16, goalY: 0.4, goalHH: 0.8 });
+  assert.equal(r.result, 'CLEAR', `reason=${r.reason}`);
+});
+
+test('iter-3: 주행 도로보다 한참 낮은 목표는 통과(overshoot)로 FAIL', () => {
+  // 차가 달리는 도로(y=3)와 목표(y=0)의 높이차가 목표 반높이(0.8)보다 크면
+  // AABB가 한 번도 겹치지 못하고 지나친다 → 'overshot goal'.
+  const f = makeField(0, 14, 561, () => 3);
+  const r = simulate(f, params, { ...baseCar, startX: 1, startY: 5, goalX: 12, goalY: 0, goalHH: 0.8 });
+  assert.equal(r.result, 'FAIL');
+  assert.match(r.reason, /overshot/i);
+});
+
+test('iter-3: 이미 도로에 접지한 채 시작(startY==floor)하면 즉시 주행', () => {
+  // 발사대가 도로와 같은 높이면 공중 단계 없이 곧바로 마찰 추력으로 전진.
+  const f = makeField(0, 14, 561, () => 0);
+  const r = simulate(f, params, { ...baseCar, startX: 1, startY: 0, goalX: 12, goalY: 0, goalHH: 0.8 });
+  assert.equal(r.result, 'CLEAR', `reason=${r.reason}`);
+  const earlyDx = Math.abs(r.trajectory[3][0] - r.trajectory[0][0]);
+  assert.ok(earlyDx > 0.02, `접지 시작은 즉시 전진해야: dx=${earlyDx}`);
+});
+
+// ── iter-4: 천장(ceiling) 충돌 — role:'ceiling' 그림자는 차 머리를 막는 장애물 ──
+
+test('iter-4: 차 상단(y+H)이 천장보다 높은 구간은 통과 불가 → FAIL "ceiling"', () => {
+  // 평지 도로(y=0) 위, x∈[4,8]에 차 높이(0.5)보다 낮은 천장(0.3).
+  const f = makeField(0, 14, 561, () => 0);
+  f.ceiling = f.xs.map((x) => (x > 4 && x < 8) ? 0.3 : Infinity);
+  const r = simulate(f, params, { ...baseCar, startX: 1, startY: 0, goalX: 12, goalY: 0, goalHH: 0.8 });
+  assert.equal(r.result, 'FAIL');
+  assert.match(r.reason, /ceiling/i);
+});
+
+test('iter-4: 천장이 차 높이보다 위(여유 있음)면 정상 통과 → CLEAR', () => {
+  // 천장 1.0, 차 높이 0.5 → 머리 위 여유 → 막히지 않음.
+  const f = makeField(0, 14, 561, () => 0);
+  f.ceiling = f.xs.map((x) => (x > 4 && x < 8) ? 1.0 : Infinity);
+  const r = simulate(f, params, { ...baseCar, startX: 1, startY: 0, goalX: 12, goalY: 0, goalHH: 0.8 });
+  assert.equal(r.result, 'CLEAR', `reason=${r.reason}`);
+});
+
+// ── iter-4: 등반 경사 한계(maxClimbDeg) — 수직 그림자 벽 엘리베이터 차단 ──
+
+test('iter-4: 접지 차는 maxClimbDeg 초과 수직 벽을 오르지 못한다 → FAIL "steep"', () => {
+  // x<4 평지(y=0), x≈4에서 거의 수직으로 y=10까지 솟는 벽. 목표는 벽 위(12, 10).
+  const f = makeField(0, 14, 561, (x) => x < 4 ? 0 : (x < 4.1 ? (x - 4) * 100 : 10));
+  const r = simulate(f, params, { ...baseCar, startX: 1, startY: 0, goalX: 12, goalY: 10, goalHH: 1 });
+  const maxY = Math.max(...r.trajectory.map(([, y]) => y));
+  assert.ok(maxY < 4, `수직 벽 등반(엘리베이터)이 일어남: maxY=${maxY}`);
+  assert.equal(r.result, 'FAIL');
+  assert.match(r.reason, /steep/i);
+});
+
+test('iter-4: maxClimbDeg 이내 완만한 램프는 정상 등판 → CLEAR', () => {
+  // 18° 경사(slope≈0.33)로 y=0→2 등판 후 평지. 목표 (12, 2).
+  const f = makeField(0, 14, 561, (x) => {
+    if (x < 4) return 0;
+    if (x < 10) return (x - 4) * (2 / 6); // slope ≈ 0.333 < tan35
+    return 2;
+  });
+  const r = simulate(f, params, { ...baseCar, startX: 1, startY: 0, goalX: 12, goalY: 2, goalHH: 0.8 });
+  assert.equal(r.result, 'CLEAR', `reason=${r.reason}`);
+});

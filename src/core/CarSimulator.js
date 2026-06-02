@@ -8,6 +8,8 @@ const EPS = 1e-3;     // 경사 측정용 미소 거리
 const ACCEL = 3;      // 엔진 추력 계수 (목표 속도로 수렴)
 const SLOPE_CLAMP = 20; // 경사 클램프(수치 안정)
 const MAX_STEP_UP = 0.5; // 공중에서 올라탈 수 있는 floor 상승 한계(이상은 그림자 벽=장애물, 순간이동 금지)
+const MAX_STEEP_RISE = 2.5; // grounded로 maxClimbDeg 초과 경사를 오를 수 있는 누적 높이 한계
+                            // (짧은 볼록 입술=발사는 곧 airborne→리셋되어 통과, 높은 수직 그림자 벽=엘리베이터는 차단)
 
 /** xs 격자에서 x에 해당하는 floor 값(선형보간, void면 null) */
 function floorAt(field, x) {
@@ -18,6 +20,21 @@ function floorAt(field, x) {
   const i = Math.floor((x - xs[0]) / dx);
   const a = floor[i], b = floor[i + 1];
   if (a === null || b === null) return null;
+  const t = (x - xs[i]) / dx;
+  return a + t * (b - a);
+}
+
+/** xs 격자에서 x의 ceiling 값(하단 y). 천장 없으면 Infinity. 한쪽만 천장이면 그 값을 보수적으로 채택. */
+function ceilingAt(field, x) {
+  const { xs, ceiling, dx } = field;
+  if (!ceiling) return Infinity;
+  if (x <= xs[0]) return ceiling[0];
+  if (x >= xs[xs.length - 1]) return ceiling[xs.length - 1];
+  const i = Math.floor((x - xs[0]) / dx);
+  const a = ceiling[i], b = ceiling[i + 1];
+  if (!isFinite(a) && !isFinite(b)) return Infinity;
+  if (!isFinite(a)) return b;
+  if (!isFinite(b)) return a;
   const t = (x - xs[i]) / dx;
   return a + t * (b - a);
 }
@@ -33,6 +50,9 @@ function floorAt(field, x) {
 export function simulate(field, params, car) {
   const g = params.gravity;
   const carSpeed = params.carSpeed;
+  // iter-4: 등반 경사 한계 복원. 접지 차는 maxClimbDeg 초과 경사를 누적 MAX_STEEP_RISE까지만 오른다.
+  const maxClimbDeg = params.maxClimbDeg != null ? params.maxClimbDeg : 35;
+  const tanMax = Math.tan((maxClimbDeg * Math.PI) / 180);
 
   // 목표 영역 AABB
   const hw = car.goalHW != null ? car.goalHW : 0.6;
@@ -80,6 +100,7 @@ export function simulate(field, params, car) {
     vx = carSpeed;
   }
   let vy = 0;
+  let steepRise = 0; // grounded로 가파른(>maxClimbDeg) 오르막을 오른 누적 높이(airborne/완만 구간에서 리셋)
   traj.push([x, y]);
 
   let guard = 0;
@@ -89,6 +110,11 @@ export function simulate(field, params, car) {
     // 1) 목표 도달?
     if (inGoal(x, y)) return clear('reached goal area');
 
+    // 1b) 천장 충돌: 차 상단(y+H)이 천장보다 높으면 통과 불가(머리가 걸림).
+    const ch = ceilingAt(field, x);
+    if (isFinite(ch) && y + H > ch + 1e-6) return fail('hit ceiling');
+
+    const xPrev = x;   // 적분 전 x(등반 경사 측정용)
     const yPrev = y;   // 적분 전 높이(착지/충돌 판정용)
 
     // 2) 힘 적용
@@ -132,12 +158,29 @@ export function simulate(field, params, car) {
       //    (iteration-3: "맨 위로 순간이동" 버그 차단. 그림자=장애물.)
       const stepUp = gh - yPrev;
       if (grounded || stepUp <= MAX_STEP_UP) {
+        // 등반 경사 한계(maxClimbDeg): grounded로 가파른 오르막을 오를 때 누적 높이를 제한.
+        //  - 짧은 볼록 입술(스키 점프)은 곧 airborne이 되어 steepRise가 리셋 → 통과.
+        //  - 높은 수직 그림자 벽은 grounded로 계속 올라 누적이 한계를 넘음 → 차단(엘리베이터 치트 방지).
+        if (grounded && gh > yPrev) {
+          const run = Math.max(Math.abs(x - xPrev), EPS);
+          const climbSlope = (gh - yPrev) / run;
+          if (climbSlope > tanMax) {
+            steepRise += gh - yPrev;
+            if (steepRise > MAX_STEEP_RISE) return fail('too steep to climb');
+          } else {
+            steepRise = 0;
+          }
+        } else {
+          steepRise = 0;
+        }
         y = gh; grounded = true;
       } else {
         grounded = false;
+        steepRise = 0;
       }
     } else {
       grounded = false; // 공중(볼록 입술 발사) 또는 void 위
+      steepRise = 0;
     }
 
     traj.push([x, y]);

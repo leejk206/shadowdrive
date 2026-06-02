@@ -1,44 +1,19 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { GameStateMachine } from '../src/core/GameStateMachine.js';
 import { validateLevel } from '../src/io/LevelLoader.js';
+import { searchSolvable } from './helpers/solvable.js';
 
 function load(id) {
   return JSON.parse(readFileSync(new URL(`../levels/${id}.json`, import.meta.url)));
 }
 
-// 가동 오클루더들의 (x,y,z,rot)를 거친 격자로 탐색해 CLEAR 배치가 하나라도 있는지 확인.
-// (레벨이 풀 수 있게 설계됐는지에 대한 sanity check. 실제 해법은 더 정밀.)
+// 레벨이 fall-and-drive로 풀 수 있는지(CLEAR 배치 존재) 검증.
+// iter-4(천장 장애물 + 등반 경사 한계) 이후 균일-격자 솔버는 '수직 벽 등반' 치트 풀이를 더는
+// 통과시키지 않아 정상 풀이를 놓친다 → 시드 고정 per-piece 볼륨 탐색으로 검증한다.
+// (자세한 배경: test/helpers/solvable.js 주석)
 function solvable(id, opts = {}) {
-  const lv = load(id);
-  const sm = new GameStateMachine(lv);
-  const xs = opts.xs || [lv.wall.width * 0.25, lv.wall.width * 0.4, lv.wall.width * 0.5, lv.wall.width * 0.6, lv.wall.width * 0.75];
-  const ys = opts.ys || [0.2, 0.5, 1.0, 1.5];
-  const zs = opts.zs || [4, 6, 8, 10];
-  const rots = opts.rots || [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330];
-  const n = sm.movables.length;
-  // 플레이어 배치 시뮬레이션: 공통 (y,z,rot)을 거칠게 스윕.
-  //  - 가동 물체 1개: x를 전 격자에 걸쳐 단독 스윕(목표가 좌/우 어디든 도달).
-  //  - 여러 개: xs 격자 위에 분산 배치(서로 다른 x)해 합성 길을 만든다.
-  // 신물리(탄도+그림자길) 아래 CLEAR 배치가 하나라도 있으면 풀림.
-  for (const y of ys) for (const z of zs) for (const rot of rots) {
-    if (n === 1) {
-      for (const x of xs) {
-        sm.reset();
-        sm.setMovableTransform(0, { pos: [x, y, z], rot: sm.movables[0].role === 'ceiling' ? 0 : rot });
-        if (sm.go().result === 'CLEAR') return true;
-      }
-      continue;
-    }
-    sm.reset();
-    for (let k = 0; k < n; k++) {
-      const x = xs[Math.min(k, xs.length - 1)] + k * 0.01;
-      sm.setMovableTransform(k, { pos: [x, y, z], rot: sm.movables[k].role === 'ceiling' ? 0 : rot });
-    }
-    if (sm.go().result === 'CLEAR') return true;
-  }
-  return false;
+  return searchSolvable(load(id), opts);
 }
 
 for (const id of ['L3', 'L4', 'L5', 'L6', 'L7']) {
@@ -48,16 +23,13 @@ for (const id of ['L3', 'L4', 'L5', 'L6', 'L7']) {
 test('L3 solvable', () => assert.equal(solvable('L3'), true));
 test('L4 solvable', () => assert.equal(solvable('L4'), true));
 
-// iteration-3 보류(DEFERRED): L5/L6/L7(compound 레벨)은 순간이동 버그로만 solver를 통과하던
-// 상태였다. MAX_STEP_UP 도입(순간이동 차단) 후 낙하-주행 메커닉으로는 현재 지오메트리/광원에서
-// 클리어 배치가 없어 자동 검증 불가(발사 높이를 천장까지 올려도 동일). 균일-배치 solver의 한계도 있음.
-// → 사용자 결정으로 엔진 fix만 먼저 반영하고 레벨 재설계는 후속 작업으로 분리.
-//   재설계(또는 solver 강화) 완료 시 아래 skip 해제할 것. 그 전엔 L5~L7을 최종본으로 출시 금지.
-const DEFER = '낙하 메커닉용 레벨 재설계 대기 (iteration-3) — 순간이동 fix로 기존 compound 레벨 자동 검증 불가';
-test('L5 solvable', { skip: DEFER }, () => assert.equal(solvable('L5'), true));
-test('L6 solvable', { skip: DEFER }, () => assert.equal(solvable('L6'), true));
-test('L7 solvable', { skip: DEFER }, () => assert.equal(solvable('L7', {
-  ys: [0.2, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0],
-  zs: [3, 4, 5, 6, 8, 10],
-  rots: [0, 10, 20, -10, -20],
-}), true));
+// DEFERRED — L5~L7(compound 레벨)은 레벨 최종화 전까지 skip 유지(사용자 결정: "레벨 설계는 마지막").
+//   L6/L7: iter-4 시드 탐색 솔버로는 이미 정상(치트 아님) 풀이가 존재함이 확인됨(각각 iter 628/62에
+//          CLEAR). 하지만 'L5~L7 최종 출시 금지' 게이트가 유효하므로 skip 유지.
+//   L5  : iter-4에서 ceiling을 장애물로 구현하면서 고정 ceiling 블록이 모든 경로를 막아 풀이가
+//          전무(시드 탐색 40k회 0 CLEAR). 레벨 재설계(ceiling 위치/크기 또는 floor 도형) 필수.
+const DEFER_L5 = '레벨 재설계 필요 (iter-4) — ceiling 장애물화로 현재 지오메트리에 CLEAR 배치 0';
+const DEFER_L67 = '레벨 최종화 대기 — 시드 솔버로 정상 풀이 확인됐으나 L5~L7 출시 게이트 유지';
+test('L5 solvable', { skip: DEFER_L5 }, () => assert.equal(solvable('L5'), true));
+test('L6 solvable', { skip: DEFER_L67 }, () => assert.equal(solvable('L6'), true));
+test('L7 solvable', { skip: DEFER_L67 }, () => assert.equal(solvable('L7'), true));

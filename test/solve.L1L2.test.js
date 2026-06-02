@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { GameStateMachine } from '../src/core/GameStateMachine.js';
 import { validateLevel } from '../src/io/LevelLoader.js';
+import { searchSolvable } from './helpers/solvable.js';
 
 function load(id) {
   return JSON.parse(readFileSync(new URL(`../levels/${id}.json`, import.meta.url)));
@@ -23,18 +24,9 @@ test('L2: 스키마 유효', () => {
   assert.equal(validateLevel(load('L2')).ok, true);
 });
 
-test('L2: 점광원에서 막대를 광원 쪽으로 밀어 그림자 확대 → 길 연결 시 CLEAR', () => {
-  const sm = new GameStateMachine(load('L2'));
-  // 광원 (6,8,12). 막대를 광원 가까이(z 큼) + 낮은 y로 → 확대된 그림자가 길 폭을 덮음.
-  // 솔버 탐색: 여러 (z,y) 조합 중 CLEAR 나오는 배치 확인.
-  let cleared = false;
-  for (const z of [9, 10, 11]) {
-    for (const y of [0.2, 0.5, 1.0]) {
-      sm.reset();
-      sm.setMovableTransform(0, { pos: [8, y, z], rot: 0 });
-      if (sm.go().result === 'CLEAR') { cleared = true; break; }
-    }
-    if (cleared) break;
-  }
-  assert.equal(cleared, true);
+test('L2: 점광원 그림자로 길을 만들어 낙하·주행 CLEAR (정상 풀이 존재)', () => {
+  // iter-4 주의: 막대를 광원 쪽(z 큼)으로 밀면 그림자 도로가 y≈-20까지 내려가고, 예전엔 차가
+  // 목표 패드 벽을 '수직 등반'해 CLEAR 됐다(치트). 등반 경사 한계로 그 풀이는 막혔으므로,
+  // 정상(≤maxClimbDeg 램프) CLEAR 배치가 존재하는지를 시드 고정 탐색으로 검증한다.
+  assert.equal(searchSolvable(load('L2')), true);
 });
