@@ -278,10 +278,10 @@ export class Renderer {
   // 오클루더(고정+가동) 실제 3D 메시. castShadow=true.
   renderOccluders(occluders) {
     this.occluderGroup.clear();
+    // occluder 1개 = 강체 메시 1개. compound(L/T/notch)의 part들을 occluder-local(posRel)
+    // 위치로 하나의 지오메트리로 병합 → 드래그/회전이 한 덩어리로 움직인다.
     for (const occ of occluders) {
-      for (const part of occ.parts) {
-        this.occluderGroup.add(this._partMesh(part, occ.role));
-      }
+      this.occluderGroup.add(this._occluderMesh(occ));
     }
   }
 
@@ -299,16 +299,49 @@ export class Renderer {
     });
   }
 
-  _partMesh(part, role) {
-    let geo;
-    if (part.shape === 'prism') {
-      geo = new THREE.CylinderGeometry(part.size[0] / 2, part.size[0] / 2, part.size[2], 3);
-      geo.rotateX(Math.PI / 2);
-    } else {
-      geo = new THREE.BoxGeometry(part.size[0], part.size[1], part.size[2]);
+  // occluder의 part 지오메트리들을 occluder-local 공간에서 하나로 병합.
+  // vendored three에는 BufferGeometryUtils가 없으므로 toNonIndexed 후 position/normal concat.
+  _mergeLocal(parts) {
+    const positions = [];
+    const normals = [];
+    for (const part of parts) {
+      let g;
+      if (part.shape === 'prism') {
+        g = new THREE.CylinderGeometry(part.size[0] / 2, part.size[0] / 2, part.size[2], 3);
+        g.rotateX(Math.PI / 2);
+      } else {
+        g = new THREE.BoxGeometry(part.size[0], part.size[1], part.size[2]);
+      }
+      const off = part.posRel || [0, 0, 0];
+      g.translate(off[0], off[1], off[2]);
+      const ng = g.index ? g.toNonIndexed() : g;
+      const pa = ng.attributes.position.array;
+      const na = ng.attributes.normal.array;
+      for (let k = 0; k < pa.length; k++) positions.push(pa[k]);
+      for (let k = 0; k < na.length; k++) normals.push(na[k]);
     }
+    const merged = new THREE.BufferGeometry();
+    merged.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    merged.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+    return merged;
+  }
 
-    const movable = !!part.movable;
+  // 회전 적용 헬퍼: 길이-4 배열=쿼터니언, 길이-3 배열=오일러 도, 숫자=z축 도.
+  _applyRot(obj, rot) {
+    if (Array.isArray(rot) && rot.length === 4) {
+      obj.quaternion.set(rot[0], rot[1], rot[2], rot[3]);
+    } else if (Array.isArray(rot)) {
+      const d = Math.PI / 180;
+      obj.rotation.set(rot[0] * d, rot[1] * d, rot[2] * d);
+    } else {
+      obj.rotation.z = ((rot || 0) * Math.PI) / 180;
+    }
+  }
+
+  _occluderMesh(occ) {
+    const geo = this._mergeLocal(occ.parts);
+    const movable = !!occ.movable;
+    const role = occ.role;
     let color, baseEmissive, hoverEmissive;
     if (role === 'ceiling') {
       color = 0x5a78b0; // 천장은 탈채도 블루
@@ -324,17 +357,9 @@ export class Renderer {
     const mesh = new THREE.Mesh(geo, mat);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
-    mesh.position.set(part.pos[0], part.pos[1], part.pos[2]);
-    // 전체 회전: 길이-4 배열=쿼터니언, 길이-3 배열=오일러 도, 숫자=z축 도.
-    if (Array.isArray(part.rot) && part.rot.length === 4) {
-      mesh.quaternion.set(part.rot[0], part.rot[1], part.rot[2], part.rot[3]);
-    } else if (Array.isArray(part.rot)) {
-      const d = Math.PI / 180;
-      mesh.rotation.set(part.rot[0] * d, part.rot[1] * d, part.rot[2] * d);
-    } else {
-      mesh.rotation.z = ((part.rot || 0) * Math.PI) / 180;
-    }
-    mesh.userData.part = part;
+    mesh.position.set(occ.origin[0], occ.origin[1], occ.origin[2]);
+    this._applyRot(mesh, occ.occRot);
+    mesh.userData.part = { movable, index: occ.index != null ? occ.index : -1 };
     mesh.userData.baseEmissive = baseEmissive;
     mesh.userData.hoverEmissive = hoverEmissive;
     return mesh;

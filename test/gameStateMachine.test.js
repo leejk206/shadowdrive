@@ -103,3 +103,28 @@ test('compound shape(L)는 _occluders에서 2 parts로 expand되고 회전 합�
   // 두 part의 part.rot 는 occluder rot(90) + posRel 회전이 합성된 결과. 합산 rot는 90.
   for (const p of occs2[0].parts) assert.equal(p.rot, 90);
 });
+
+test('_occluders는 렌더용 occluder origin/occRot + part posRel(로컬)을 노출', () => {
+  const lv = {
+    id: 'C', light: { type: 'directional', vec: [0, 0, -1] },
+    wall: { width: 10, height: 6 },
+    start: [0, 0], goal: [9, 0],
+    fixedOccluders: [],
+    movableOccluders: [
+      { shape: 'L', role: 'floor', size: [2, 2, 1], spawn: [5, 1, 3], allow: { translate: true, rotate: true } },
+    ],
+    params: { carSpeed: 4, gravity: 9.8, maxClimbDeg: 35, gapPassRatio: 0.8 },
+  };
+  const sm = new GameStateMachine(lv);
+  const occ = sm._occluders()[0];
+  // occluder 중심(origin)과 회전(occRot)
+  assert.deepEqual(occ.origin, [5, 1, 3]);
+  assert.equal(occ.occRot, 0);
+  // 각 part는 로컬 posRel을 보유(world pos와 별개)
+  for (const p of occ.parts) {
+    assert.ok(Array.isArray(p.posRel) && p.posRel.length === 3);
+    // world pos = origin + (회전 0이므로) posRel
+    assert.ok(Math.abs(p.pos[0] - (occ.origin[0] + p.posRel[0])) < 1e-9);
+    assert.ok(Math.abs(p.pos[1] - (occ.origin[1] + p.posRel[1])) < 1e-9);
+  }
+});

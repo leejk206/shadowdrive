@@ -52,7 +52,9 @@ function patchOccluderMeta(sm) {
     const fixedCount = sm.level.fixedOccluders.length;
     occs.forEach((o, oi) => {
       const movable = oi >= fixedCount;
-      o.parts.forEach((p) => { p.movable = movable; p.index = movable ? oi - fixedCount : -1; });
+      o.movable = movable;                       // occluder 단위 메타(렌더러가 단일 강체 메시에 사용)
+      o.index = movable ? oi - fixedCount : -1;
+      o.parts.forEach((p) => { p.movable = movable; p.index = o.index; });
     });
     return occs;
   };

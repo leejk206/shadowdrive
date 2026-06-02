@@ -34,9 +34,11 @@ export class GameStateMachine {
           size: p.size,
           pos: [src.pos[0] + rx, src.pos[1] + ry, src.pos[2] + rz],
           rot,
+          posRel: p.posRel,  // 로컬 오프셋(렌더 강체 병합용) — world pos와 별개로 보존
         };
       });
-      return { parts, role: src.role || 'floor' };
+      // origin/occRot: 렌더러가 occluder를 단일 강체(병합 메시)로 배치/회전하는 데 사용.
+      return { parts, role: src.role || 'floor', origin: src.pos.slice(), occRot: rot };
     };
 
     const fixed = this.level.fixedOccluders.map((f) =>
