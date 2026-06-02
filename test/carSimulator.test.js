@@ -124,6 +124,24 @@ test('iter-3: 이미 도로에 접지한 채 시작(startY==floor)하면 즉시 
   assert.ok(earlyDx > 0.02, `접지 시작은 즉시 전진해야: dx=${earlyDx}`);
 });
 
+test('iter-4: 출발 지점을 그림자가 덮으면(도로 상단 > startY) 위로 순간이동 없이 끼임 → FAIL "jam"', () => {
+  // start_x(=1)에서 도로(그림자 상단) y=6 이 발사대 startY(=3)보다 위 = 물체가 차를 덮음/침범.
+  // 위(가장 높은 면)로 순간이동시키지 말고 그 자리에 끼여 정지 → FAIL.
+  const f = makeField(0, 14, 561, () => 6);
+  const r = simulate(f, params, { ...baseCar, startX: 1, startY: 3, goalX: 12, goalY: 6, goalHH: 1 });
+  const maxY = Math.max(...r.trajectory.map(([, y]) => y));
+  assert.ok(maxY < 3.5, `차가 위로 순간이동함: maxY=${maxY}`);
+  assert.equal(r.result, 'FAIL');
+  assert.match(r.reason, /jam/i);
+});
+
+test('iter-4: 도로 상단이 startY와 같으면(접지) 끼임이 아니라 정상 주행', () => {
+  // 덮음 판정이 정상 접지 출발(startY==floor)까지 끼임으로 막으면 안 된다.
+  const f = makeField(0, 14, 561, () => 2);
+  const r = simulate(f, params, { ...baseCar, startX: 1, startY: 2, goalX: 12, goalY: 2, goalHH: 0.8 });
+  assert.equal(r.result, 'CLEAR', `reason=${r.reason}`);
+});
+
 // ── iter-4: 천장(ceiling) 충돌 — role:'ceiling' 그림자는 차 머리를 막는 장애물 ──
 
 test('iter-4: 차 상단(y+H)이 천장보다 높은 구간은 통과 불가 → FAIL "ceiling"', () => {

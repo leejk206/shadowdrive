@@ -95,6 +95,12 @@ export function simulate(field, params, car) {
     y = (sY != null) ? sY : (y != null ? y : 0);
     grounded = false;
     vx = 0;             // 공중: 추력 없음(수평 이동 없음)
+  } else if (sY != null && y > sY + EPS) {
+    // 도로(그림자 상단)가 발사대보다 위 = 물체/그림자가 출발 지점을 덮음·침범.
+    // 위(가장 높은 면)로 순간이동시키지 않고 그 자리에 끼여 정지 → FAIL.
+    y = sY;
+    traj.push([x, y]);
+    return fail('jammed at start (object covers car)');
   } else {
     grounded = true;
     vx = carSpeed;
