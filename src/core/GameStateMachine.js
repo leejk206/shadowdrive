@@ -51,22 +51,33 @@ export class GameStateMachine {
   }
 
   _pads() {
-    const [sx, sy] = this.level.start;
+    // iteration-3: start 발판 제거(차는 공중 발사대에서 그림자로 낙하). goal 패드만 유지.
     const [gx, gy] = this.level.goal;
     const w = 0.8; // 패드 폭
     return [
-      { x0: sx - w / 2, x1: sx + w / 2, y: sy },
       { x0: gx - w / 2, x1: gx + w / 2, y: gy },
     ];
+  }
+
+  /** start_x 좌우 좁은 구간의 floor를 강제 null → 그 영역엔 그림자 도로가 생기지 않음 */
+  _maskStartZone(hf) {
+    const sx = this.level.start[0];
+    const p = this.level.params || {};
+    const w = p.startClearW != null ? p.startClearW : 1.0;
+    for (let i = 0; i < hf.xs.length; i++) {
+      if (Math.abs(hf.xs[i] - sx) <= w) hf.floor[i] = null;
+    }
   }
 
   /** PLAN 미리보기용 heightfield 계산 */
   recompute() {
     const polys = projectScene(this._occluders(), this.level.light);
-    return buildHeightfield({
+    const hf = buildHeightfield({
       polygons: polys, pads: this._pads(),
       xMin: 0, xMax: this.level.wall.width, samples: SAMPLES,
     });
+    this._maskStartZone(hf);
+    return hf;
   }
 
   /** 가동 오클루더 i의 변환 갱신 (PLAN 단계에서만) */
@@ -116,7 +127,7 @@ export class GameStateMachine {
     const goalHW = p.goalHW != null ? p.goalHW : 0.6;
     const goalHH = p.goalHH != null ? p.goalHH : 0.8;
     const res = simulate(this.frozen, this.level.params, {
-      length: 1, height: 0.5, startX: sx, goalX: gx, goalY: gy, goalHW, goalHH,
+      length: 1, height: 0.5, startX: sx, startY: sy, goalX: gx, goalY: gy, goalHW, goalHH,
     });
     this.phase = res.result; // 'CLEAR' | 'FAIL'
     this.lastResult = res;

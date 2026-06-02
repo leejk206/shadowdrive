@@ -65,9 +65,16 @@ test('도로가 goalX 못 미쳐도 목표 영역 안에서 끝나면 → CLEAR'
   assert.match(r.reason, /goal area/i);
 });
 
-test('void에서 시작 → FAIL "start on void"', () => {
-  const f = makeField(-1, 12, 131, (x) => (x < 0.5) ? null : 0);
-  const r = simulate(f, params, baseCar);
+test('iter-3: void(마스킹) start → 공중 발사대에서 낙하해 도로에 착지·주행 CLEAR', () => {
+  // start_x 부근은 void(start 마스킹 모사), x>=1.5부터 평지 도로. 차는 startY=3에서 낙하.
+  const f = makeField(-1, 12, 261, (x) => (x < 1.5) ? null : 0);
+  const r = simulate(f, params, { ...baseCar, startY: 3 });
+  assert.equal(r.result, 'CLEAR', `reason=${r.reason}`);
+});
+
+test('iter-3: 공중 시작 후 받쳐줄 도로가 전혀 없으면 → FAIL "fell"', () => {
+  const f = makeField(-1, 12, 131, () => null);
+  const r = simulate(f, params, { ...baseCar, startY: 3 });
   assert.equal(r.result, 'FAIL');
-  assert.match(r.reason, /start on void/i);
+  assert.match(r.reason, /fell/i);
 });

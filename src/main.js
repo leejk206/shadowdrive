@@ -65,10 +65,8 @@ function syncScene() {
   renderer.renderOccluders(occs);
   const hf = sm.recompute();
   renderer.renderHeightfield(hf);
-  const [sx] = sm.level.start;
-  const si = Math.round((sx - hf.xs[0]) / hf.dx);
-  const sy = (hf.floor[si] != null) ? hf.floor[si] : sm.level.start[1];
-  renderer.setCar(sx, sy);
+  // PLAN: 차는 (높은) 고정 start 위치에 정지 — 그림자에 스냅하지 않음(물리는 Go+3초 뒤 적용).
+  renderer.setCar(sm.level.start[0], sm.level.start[1]);
 }
 
 function onGo() {
@@ -166,11 +164,8 @@ function main() {
       sm.setMovableTransform(index, t);
       const hf = sm.recompute();
       renderer.renderHeightfield(hf);
-      // 시작점 도로 위에 차 미리보기.
-      const [sx] = sm.level.start;
-      const si = Math.round((sx - hf.xs[0]) / hf.dx);
-      const sy = (hf.floor[si] != null) ? hf.floor[si] : sm.level.start[1];
-      renderer.setCar(sx, sy);
+      // 차는 고정 start 위치에 정지(그림자 스냅 없음). 물리는 Go+3초 뒤.
+      renderer.setCar(sm.level.start[0], sm.level.start[1]);
       const m = sm.movables[index];
       return { pos: m.pos.slice(), rot: Array.isArray(m.rot) ? m.rot.slice() : m.rot };
     }

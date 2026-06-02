@@ -64,9 +64,18 @@ export function simulate(field, params, car) {
   function fail(reason) { return { result: 'FAIL', reason, trajectory: traj }; }
   function clear(reason) { return { result: 'CLEAR', reason, trajectory: traj }; }
 
-  if (y === null) { traj.push([x, gy]); return fail('start on void'); }
+  // iteration-3: start 구간은 도로 마스킹으로 floor가 없을 수 있다 →
+  // 'start on void' 실패 대신 공중 발사대(car.startY)에서 시작해 플레이어가 만든
+  // 그림자 도로로 낙하·착지하는 설계. 끝내 도로가 없으면 아래 루프가 'fell'로 처리.
+  let grounded;
+  if (y === null) {
+    y = (car.startY != null) ? car.startY : 0;
+    grounded = false;
+  } else {
+    grounded = true;
+  }
 
-  let vx = carSpeed, vy = 0, grounded = true;
+  let vx = carSpeed, vy = 0;
   traj.push([x, y]);
 
   let guard = 0;
