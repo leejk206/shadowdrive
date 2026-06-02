@@ -5,7 +5,7 @@
   "start": [1, 3],
   "goal": [17, 0],
   "fixedOccluders": [
-    { "shape": "bar", "role": "ceiling", "size": [6, 1, 1], "pos": [9, 1.4, 3], "rot": 0 }
+    { "shape": "bar", "role": "ceiling", "size": [6, 1, 1], "pos": [9, 5.5, 3], "rot": 0 }
   ],
   "movableOccluders": [
     { "shape": "L", "role": "floor", "size": [4, 2, 1], "spawn": [5, 2.5, 9],

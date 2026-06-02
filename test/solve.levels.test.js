@@ -23,13 +23,15 @@ for (const id of ['L3', 'L4', 'L5', 'L6', 'L7']) {
 test('L3 solvable', () => assert.equal(solvable('L3'), true));
 test('L4 solvable', () => assert.equal(solvable('L4'), true));
 
-// DEFERRED — L5~L7(compound 레벨)은 레벨 최종화 전까지 skip 유지(사용자 결정: "레벨 설계는 마지막").
-//   L6/L7: iter-4 시드 탐색 솔버로는 이미 정상(치트 아님) 풀이가 존재함이 확인됨(각각 iter 628/62에
-//          CLEAR). 하지만 'L5~L7 최종 출시 금지' 게이트가 유효하므로 skip 유지.
-//   L5  : iter-4에서 ceiling을 장애물로 구현하면서 고정 ceiling 블록이 모든 경로를 막아 풀이가
-//          전무(시드 탐색 40k회 0 CLEAR). 레벨 재설계(ceiling 위치/크기 또는 floor 도형) 필수.
-const DEFER_L5 = '레벨 재설계 필요 (iter-4) — ceiling 장애물화로 현재 지오메트리에 CLEAR 배치 0';
-const DEFER_L67 = '레벨 최종화 대기 — 시드 솔버로 정상 풀이 확인됐으나 L5~L7 출시 게이트 유지';
-test('L5 solvable', { skip: DEFER_L5 }, () => assert.equal(solvable('L5'), true));
+// L5: iter-4에서 ceiling 장애물화 시 고정 천장(y=1.4, 그림자 하단 -2.13)이 중앙 전체를 막아
+//   풀이가 전무했음. 천장을 y=5.5(그림자 하단 +3.33)로 올려 '천장 밑 통과' 정상 풀이가 성립 →
+//   solvable 활성화(회귀 방지). 천장 메커닉 학습용 튜토리얼은 별도 플랜 참고
+//   (docs/superpowers/plans/2026-06-02-tutorial.md).
+test('L5 solvable', () => assert.equal(solvable('L5'), true));
+
+// DEFERRED — L6/L7은 레벨 최종화 전까지 skip 유지(사용자 결정: "레벨 설계는 마지막").
+//   시드 탐색 솔버로 정상(치트 아님) 풀이가 존재함은 확인됨(각각 iter 628/62에 CLEAR)이나
+//   'L6~L7 최종 출시 금지' 게이트가 유효하므로 skip 유지.
+const DEFER_L67 = '레벨 최종화 대기 — 시드 솔버로 정상 풀이 확인됐으나 L6~L7 출시 게이트 유지';
 test('L6 solvable', { skip: DEFER_L67 }, () => assert.equal(solvable('L6'), true));
 test('L7 solvable', { skip: DEFER_L67 }, () => assert.equal(solvable('L7'), true));
