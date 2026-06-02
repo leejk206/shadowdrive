@@ -123,7 +123,16 @@ function animateCar(res, done) {
   cancelAnim();
   const step = () => {
     if (i >= traj.length) { done(); return; }
-    renderer.setCar(traj[i][0], traj[i][1]);
+    const [x, y] = traj[i];
+    // 다음 샘플과의 차분으로 slope 추정. 마지막 샘플은 직전 slope 유지.
+    let slope = 0;
+    const j = Math.min(i + 2, traj.length - 1);
+    if (j > i) {
+      const dx = traj[j][0] - x;
+      const dy = traj[j][1] - y;
+      if (Math.abs(dx) > 1e-6) slope = Math.atan2(dy, dx);
+    }
+    renderer.setCar(x, y, slope);
     renderer.render();
     i += 2;
     anim = requestAnimationFrame(step);

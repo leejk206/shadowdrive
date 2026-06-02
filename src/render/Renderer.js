@@ -202,19 +202,38 @@ export class Renderer {
 
   _makeCar() {
     const g = new THREE.Group();
+
     const body = new THREE.Mesh(
-      new THREE.BoxGeometry(0.9, 0.4, 0.5),
+      new THREE.BoxGeometry(0.9, 0.32, 0.5),
       new THREE.MeshStandardMaterial({ color: 0xff5a3c, emissive: 0x5a1500, roughness: 0.4 })
     );
+    body.position.y = 0.08;
     body.castShadow = true;
+
     const cabin = new THREE.Mesh(
-      new THREE.BoxGeometry(0.5, 0.3, 0.45),
+      new THREE.BoxGeometry(0.5, 0.26, 0.45),
       new THREE.MeshStandardMaterial({ color: 0xff7a5c, emissive: 0x401000, roughness: 0.4 })
     );
-    cabin.position.set(-0.05, 0.32, 0);
+    cabin.position.set(-0.05, 0.34, 0);
     cabin.castShadow = true;
+
+    const wheelGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.18, 16);
+    wheelGeo.rotateX(Math.PI / 2);   // 축이 z(차폭) 방향이 되도록
+    const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.7, emissive: 0x000000 });
+
+    const wheels = [];
+    for (const [wx, wz] of [[ 0.32, 0.22], [ 0.32, -0.22], [-0.32, 0.22], [-0.32, -0.22]]) {
+      const w = new THREE.Mesh(wheelGeo, wheelMat);
+      w.position.set(wx, -0.08, wz);   // 차체 바닥 라인
+      w.castShadow = true;
+      wheels.push(w);
+      g.add(w);
+    }
+
     g.add(body, cabin);
-    g.userData.halfHeight = 0.2;
+    // pivot 기준: y=0 이 "노면 접촉선". setCar(x, y, slope)에서 (x, y) 를 차 발 위치로 사용.
+    g.userData.halfHeight = 0.2;     // 호환용 (기존 setCar 사용처)
+    g.userData.wheels = wheels;
     return g;
   }
 
@@ -395,9 +414,10 @@ export class Renderer {
     }
   }
 
-  setCar(x, y) {
-    const hh = this.car.userData.halfHeight || 0.2;
-    this.car.position.set(x, y + hh, 0.3);
+  setCar(x, y, slopeRad = 0) {
+    // y 는 floor 윤곽선상의 노면 점. 차 그룹의 발(y=0)이 (x, y)에 오도록 배치.
+    this.car.position.set(x, y, 0.3);
+    this.car.rotation.z = slopeRad;   // 화면 평면 회전 = 피칭(2.5D 정면뷰)
     this.car.visible = true;
   }
 
