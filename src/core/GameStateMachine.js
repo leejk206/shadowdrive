@@ -59,25 +59,15 @@ export class GameStateMachine {
     ];
   }
 
-  /** start_x 좌우 좁은 구간의 floor를 강제 null → 그 영역엔 그림자 도로가 생기지 않음 */
-  _maskStartZone(hf) {
-    const sx = this.level.start[0];
-    const p = this.level.params || {};
-    const w = p.startClearW != null ? p.startClearW : 1.0;
-    for (let i = 0; i < hf.xs.length; i++) {
-      if (Math.abs(hf.xs[i] - sx) <= w) hf.floor[i] = null;
-    }
-  }
-
   /** PLAN 미리보기용 heightfield 계산 */
   recompute() {
+    // iteration-3: start 도로 마스킹 제거. 차는 start_x 아래에 만든 그림자 도로에 낙하·접지해야
+    // 출발할 수 있으므로(추력은 접지 시에만), 그 영역에 도로 형성을 막으면 안 된다.
     const polys = projectScene(this._occluders(), this.level.light);
-    const hf = buildHeightfield({
+    return buildHeightfield({
       polygons: polys, pads: this._pads(),
       xMin: 0, xMax: this.level.wall.width, samples: SAMPLES,
     });
-    this._maskStartZone(hf);
-    return hf;
   }
 
   /** 가동 오클루더 i의 변환 갱신 (PLAN 단계에서만) */

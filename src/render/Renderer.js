@@ -399,15 +399,9 @@ export class Renderer {
   renderPads(start, goal, hw = 0.6, hh = 0.8) {
     this.padGroup.clear();
 
-    // START — 작은 초록 패드 + 라벨
+    // START — iteration-3: 발판(footing) 없음. 위치 라벨만 표시(그림자 안 만듦).
     {
       const [px, py] = start;
-      const m = new THREE.Mesh(
-        new THREE.BoxGeometry(0.8, 0.22, 0.5),
-        new THREE.MeshStandardMaterial({ color: 0x33cc66, emissive: 0x0d4d22, emissiveIntensity: 1.4, roughness: 0.4 }));
-      m.position.set(px, py - 0.11, 0.2);
-      m.castShadow = true;
-      this.padGroup.add(m);
       const lbl = this._makeLabel('START', '#8effb8');
       lbl.position.set(px, py + 0.9, 0.5);
       this.padGroup.add(lbl);

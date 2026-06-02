@@ -65,11 +65,15 @@ test('도로가 goalX 못 미쳐도 목표 영역 안에서 끝나면 → CLEAR'
   assert.match(r.reason, /goal area/i);
 });
 
-test('iter-3: void(마스킹) start → 공중 발사대에서 낙하해 도로에 착지·주행 CLEAR', () => {
-  // start_x 부근은 void(start 마스킹 모사), x>=1.5부터 평지 도로. 차는 startY=3에서 낙하.
-  const f = makeField(-1, 12, 261, (x) => (x < 1.5) ? null : 0);
-  const r = simulate(f, params, { ...baseCar, startY: 3 });
+test('iter-3: 발사대(startY)에서 start_x 아래 도로로 낙하해 접지·주행 CLEAR', () => {
+  // 차는 공중에서 추력이 없으므로 제자리 낙하. start_x(=1) 아래에 도로가 있어야 접지 후 주행.
+  const f = makeField(-1, 12, 261, () => 0); // 전 구간 평지 도로
+  const r = simulate(f, params, { ...baseCar, startX: 1, startY: 3, goalX: 9 });
   assert.equal(r.result, 'CLEAR', `reason=${r.reason}`);
+  assert.ok(r.trajectory[0][1] > 2, '발사대(높은 곳)에서 시작해야 함');
+  // 공중 추력 0 증거: 첫 몇 샘플은 수평 이동이 거의 없어야(낙하만)
+  const earlyDx = Math.abs(r.trajectory[2][0] - r.trajectory[0][0]);
+  assert.ok(earlyDx < 0.05, `공중에서 수평 이동(추력)이 없어야: dx=${earlyDx}`);
 });
 
 test('iter-3: 공중 시작 후 받쳐줄 도로가 전혀 없으면 → FAIL "fell"', () => {

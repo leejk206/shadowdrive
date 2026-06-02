@@ -65,18 +65,21 @@ export function simulate(field, params, car) {
   function fail(reason) { return { result: 'FAIL', reason, trajectory: traj }; }
   function clear(reason) { return { result: 'CLEAR', reason, trajectory: traj }; }
 
-  // iteration-3: start 구간은 도로 마스킹으로 floor가 없을 수 있다 →
-  // 'start on void' 실패 대신 공중 발사대(car.startY)에서 시작해 플레이어가 만든
-  // 그림자 도로로 낙하·착지하는 설계. 끝내 도로가 없으면 아래 루프가 'fell'로 처리.
-  let grounded;
-  if (y === null) {
-    y = (car.startY != null) ? car.startY : 0;
+  // iteration-3: 차는 오로지 바퀴 마찰(접지)로만 추력을 얻는다 → 공중에선 추력 0(수평 정지).
+  //  - 발사대(startY)가 start_x 도로보다 위(또는 도로 없음): 공중에서 제자리 낙하(vx=0).
+  //    플레이어가 start_x 아래에 만든 그림자 도로에 떨어져 접지한 뒤부터 마찰 추력으로 주행.
+  //  - 이미 도로에 접지(startY 미지정/도로와 같은 높이): 마찰 추력으로 주행(평지 테스트 등).
+  let grounded, vx;
+  const sY = car.startY;
+  if (y === null || (sY != null && sY > y + EPS)) {
+    y = (sY != null) ? sY : (y != null ? y : 0);
     grounded = false;
+    vx = 0;             // 공중: 추력 없음(수평 이동 없음)
   } else {
     grounded = true;
+    vx = carSpeed;
   }
-
-  let vx = carSpeed, vy = 0;
+  let vy = 0;
   traj.push([x, y]);
 
   let guard = 0;
