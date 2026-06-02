@@ -43,3 +43,11 @@ test('fixed에 pos 누락이면 에러', () => {
   assert.equal(r.ok, false);
   assert.match(r.errors.join(','), /pos/);
 });
+
+test('L/T/notch shape는 정상 허용', () => {
+  for (const shape of ['L', 'T', 'notch']) {
+    const lv = JSON.parse(JSON.stringify(valid));
+    lv.movableOccluders[0].shape = shape;
+    assert.equal(validateLevel(lv).ok, true, `shape ${shape} should be allowed`);
+  }
+});

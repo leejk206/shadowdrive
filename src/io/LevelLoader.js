@@ -1,5 +1,5 @@
 // src/io/LevelLoader.js
-const SHAPES = new Set(['bar', 'prism']);
+const SHAPES = new Set(['bar', 'prism', 'L', 'T', 'notch']);
 const ROLES = new Set(['floor', 'ceiling']);
 
 /** 레벨 객체 구조 검증. { ok, errors } 반환 */
