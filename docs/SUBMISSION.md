@@ -5,7 +5,7 @@
 ## 1. 라이브 동작 확인 (Live URL)
 - [ ] 배포된 **라이브 URL**이 브라우저에서 정상 실행된다 (페이지 로드 → L1 자동 표시).
 - [ ] 1~7 키로 L1~L7 전 레벨 전환이 동작한다.
-- [ ] drag(이동) / wheel(회전) / shift+wheel(깊이) / space(Go) / r(reset) 인터랙션 정상.
+- [ ] 좌드래그(z축 회전) / shift+좌드래그(이동) / 우드래그·휠(카메라) / space(Go) / r(reset) 인터랙션 정상.
 - [ ] **콘솔 에러 0건** (개발자 도구 Console 탭에서 확인).
 
 ## 2. 기타 사용 기능 (외부 라이브러리 고지)
@@ -18,10 +18,11 @@
 - **충돌체 빌드**: heightfield → 주행 가능 콜라이더(경사/갭/천장) 변환 — `src/core/ColliderBuilder.js`.
 - **차량 시뮬레이션**: 중력·경사 등반 한계(maxClimbDeg)·갭 통과 비율(gapPassRatio) 기반 전진 적분 — `src/core/CarSimulator.js`.
 - **상태머신**: PLAN ↔ GO ↔ 결과(CLEAR/FAIL) 전이 관리 — `src/core/GameStateMachine.js`.
-- **레벨 로더 / 스키마 검증**: JSON 레벨 정의 로드 + 유효성 검사 — `src/io/LevelLoader.js`.
-- **인터랙션 컨트롤러**: 가동 오클루더 picking / 이동 / 회전 / 깊이 조정 — `src/ui/InteractionController.js`.
+- **레벨 로더 / 스키마 검증**: JSON 레벨 정의 로드 + 유효성 검사 (bar/prism/L/T/notch shape) — `src/io/LevelLoader.js`.
+- **Compound shape 분해**: L/T/notch 실루엣을 회전 가능한 bar parts로 분해(`shapes.expandCompound`), 상태머신이 z축 회전에 맞춰 part posRel을 합성 — `src/core/shapes.js`, `src/core/GameStateMachine.js`.
+- **인터랙션 컨트롤러**: 가동 오클루더 picking / 이동 / z축 회전(deg 단일 진실원) — `src/ui/InteractionController.js`.
 - **렌더러(시각화)**: 단색 배경 + 단일 강광원 + 강명암 미니멀 룩. 도로는 채워진 리본 메시로 표현 — `src/render/Renderer.js`.
-- **테스트**: 코어 로직 단위/통합 테스트 55개 (node --test) 전부 통과.
+- **테스트**: 코어 로직 단위/통합 테스트 64개 (node --test) 전부 통과.
 
 ## 4. 데모 영상 (3분)
 - [ ] 길이 **3분 이내**.
