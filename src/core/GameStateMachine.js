@@ -2,7 +2,7 @@
 import { projectScene } from './ShadowProjector.js';
 import { buildHeightfield } from './ColliderBuilder.js';
 import { simulate } from './CarSimulator.js';
-import { expandCompound } from './shapes.js';
+import { expandCompound, transformVerts } from './shapes.js';
 
 const SAMPLES = 200;
 
@@ -22,20 +22,18 @@ export class GameStateMachine {
   _occluders() {
     const buildOcc = (src) => {
       // src = { shape, role, size, pos, rot }
+      // rot은 number(z deg) | [rx,ry,rz](오일러 deg) | [x,y,z,w](쿼터니언) — transformVerts가 셋 다 처리.
+      // compound part는 occluder 중심 기준 강체 회전: posRel을 occluder rot으로 회전(transformVerts로
+      // 원점 회전), part 로컬 정점도 같은 rot을 part.pos에 적용 → 두 단계가 정확히 합성된다.
       const parts0 = expandCompound(src.shape, src.size);
-      const rotDeg = typeof src.rot === 'number' ? src.rot : 0;
-      const r = (rotDeg * Math.PI) / 180;
-      const cs = Math.cos(r), sn = Math.sin(r);
+      const rot = (typeof src.rot === 'number' || Array.isArray(src.rot)) ? src.rot : 0;
       const parts = parts0.map((p) => {
-        const [pxL, pyL, pzL] = p.posRel;
-        // occluder 로컬 (x,y)를 z축 회전 후 occluder 월드 위치에 합성
-        const rx = cs * pxL - sn * pyL;
-        const ry = sn * pxL + cs * pyL;
+        const [rx, ry, rz] = transformVerts([p.posRel], [0, 0, 0], rot)[0];
         return {
           shape: p.shape,
           size: p.size,
-          pos: [src.pos[0] + rx, src.pos[1] + ry, src.pos[2] + pzL],
-          rot: rotDeg + p.rotRel,
+          pos: [src.pos[0] + rx, src.pos[1] + ry, src.pos[2] + rz],
+          rot,
         };
       });
       return { parts, role: src.role || 'floor' };

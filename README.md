@@ -19,7 +19,7 @@ Three.js(r159)는 `vendor/`에 로컬 vendoring 되어 있어 네트워크 의�
 
 | 입력 | 동작 |
 |---|---|
-| 좌드래그 (물체) | 화면 평면(z축) 회전 — 좌우로 끌어 각도 조절 |
+| 좌드래그 (물체) | 아크볼 회전 (잡은 점이 따라옴, 전체 3D) |
 | Shift+좌드래그 | 물체 이동 (화면 평면 내) |
 | 우드래그 | 카메라 궤도 회전 (선택 물체 중심) |
 | 휠 | 카메라 줌 |
@@ -42,13 +42,13 @@ vendor/three.module.js  # 로컬 vendored Three.js r159
 src/
   core/                 # 렌더 무관 순수 모듈 (node:test 단위테스트)
     mathx.js            # 투영 / convex hull / 수직 span
-    shapes.js           # 오클루더 정점 + z축 변환 + compound(L/T/notch) 분해
+    shapes.js           # 오클루더 정점 + 3D 변환 + compound(L/T/notch) 분해
     ShadowProjector.js  # 오클루더+광원 → 그림자 폴리곤
     ColliderBuilder.js  # 폴리곤 → floor/ceiling 1D envelope heightfield
     CarSimulator.js     # 탄도+지면구속 물리 / 목표 영역 판정
     GameStateMachine.js # PLAN/GO/CLEAR/FAIL + 광원 접근 클램프
   io/LevelLoader.js     # 레벨 JSON 로드·검증
-  ui/InteractionController.js  # z축 회전/이동 + 카메라 분리
+  ui/InteractionController.js  # 아크볼 회전/이동 + 카메라 분리
   render/Renderer.js    # Three.js 씬·라이팅·캐스트섀도·도로·UI
 levels/L1..L7.json      # 데이터 기반 7레벨
 test/                   # 코어 모듈 헤드리스 단위/통합 테스트
