@@ -111,7 +111,36 @@
 
 ---
 
+## 사용자 결정 (2026-06-02 후속)
+
+### #2 원인 확정
+- 사용자 재현: **L5의 파란 블록 / L7의 연보라 블록** — 둘 다 `role: "ceiling"` 오클루더.
+  - L5: `fixedOccluders[0]`, ceiling, color `0x5a78b0` (탈채도 블루) — `Renderer._partMesh:294-297`.
+  - L7: `movableOccluders[3]`, ceiling movable, emissive `0x4a2c00` → 시각적으로 연보라.
+- **원인**: `Renderer.renderHeightfield` (`src/render/Renderer.js:325-391`) 가 `hf.floor`만 빛나는 도로 리본(`roadGroup`)으로 그리고, `hf.ceiling`은 `0x88aaff, opacity: 0.25` 옅은 라인 → 사실상 비가시.
+- **그림자 자체**: castShadow는 ceiling 블록에서도 작동해 벽에 검은 그림자는 드리워진다. 사용자가 본 "그림자에 길이 없음"은 정확히는 **흰 도로 리본의 부재**.
+- **해결**: #3과 통합. `roadGroup`·`ceilingGroup` 시각화 자체를 제거하면 ceiling/floor 모두 castShadow 결과 검은 그림자 하나로 통일 → role 구분은 게임 로직에만 존재, 시각적으론 "그림자=길/장애물" 정체성 회복.
+
+### #5 회전 실루엣 shape — 확정
+- **도입할 shape**: `L-블록`, `T-블록`, `노치 막대` 3종 전부 추가.
+  - L/T = compound (parts 2개의 bar 합성). `shapes.js`/`ShadowProjector` 변경 최소 — 기존 compound part 경로 활용.
+  - 노치 = concave 단일 형상. 정점 8개 (직사각형 4 + 홈 4)로 정의하되 **envelope 알고리즘 그대로 사용 가능** — convex hull로 폴리곤 만들면 노치가 사라지므로, `ShadowProjector`를 **convex hull 미사용 모드**로 분기해야 한다(노치는 정점 직접 폴리곤화). 또는 노치를 compound(2 bar)로 표현해 우회.
+  - **채택**: 노치도 compound 2-bar 분해로 통일(L과 동일 알고리즘 재사용, hull 변경 0).
+- **회전축**: **z축만**(현재 유지). x/y축 회전 미도입.
+  - L/T/노치는 z축 4회 회전만으로도 4종 실루엣을 만들어 퍼즐로 충분.
+
+### #3 그림자 시각화 — 확정
+- **floor/ceiling 동일 톤** — 한 톤의 검정 그림자.
+- `roadGroup`(글로우+코어 리본) 제거. `ceilingGroup` 옅은 라인 제거. 흰 도로 라인 0.
+- 시각화는 castShadow에 의한 벽 그림자만. role 구분은 게임 로직(`buildHeightfield`)에만 존재.
+- 그림자 가독성 보강 필요 시: 벽 머티리얼 톤 조정, 광원 강도/페넘브라 미세조정. (별도 라인/리본 추가 금지.)
+
+### #2 추가 디버그
+- 사용자가 #2를 직접 재현해 ceiling 케이스로 확정. 별도 헤드리스 회귀 테스트는 불필요(시각화 버그 — 코드 제거로 사라짐).
+
+---
+
 ## 후속 문서
 
-- 사용자 결정 수령 후 `2026-06-02-iteration-2-spec.md` (확정 사양)
-- 그 다음 `2026-06-02-iteration-2-plan.md` (Task 분해)
+- ✅ 본 문서가 iteration-2 spec 역할 겸함 (결정 사항 위 섹션에 통합).
+- 다음: `2026-06-02-iteration-2-plan.md` (Task 분해) — 우선순위 P0(#1·#3·#2) → P1(#5·#6) → P2(#4 레벨 재설계).
