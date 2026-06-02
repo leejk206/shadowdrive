@@ -321,73 +321,12 @@ export class Renderer {
     return mesh;
   }
 
-  // floor 윤곽을 벽면(z≈0.02)에 빛나는 도로로 그린다. null(void)에서 끊는다.
+  // iteration-2: "그림자=도로=장애물" 정체성으로 통일.
+  // 흰 도로 리본 / 옅은 천장 라인 시각화 제거. 벽에 드리운 실제 castShadow만 시각 단서.
+  // heightfield 자체는 차 시뮬에 계속 쓰이므로 메서드는 남기되, 그룹만 비운다.
   renderHeightfield(hf) {
     this.roadGroup.clear();
     this.ceilingGroup.clear();
-
-    // 윤곽선을 따라 위·아래 half만큼 두께를 가진 띠 지오메트리.
-    const ribbon = (run, half, zPos) => {
-      const pos = [];
-      for (let k = 0; k < run.length - 1; k++) {
-        const [x0, y0] = run[k];
-        const [x1, y1] = run[k + 1];
-        pos.push(
-          x0, y0 - half, zPos, x0, y0 + half, zPos, x1, y1 + half, zPos,
-          x0, y0 - half, zPos, x1, y1 + half, zPos, x1, y1 - half, zPos
-        );
-      }
-      const g = new THREE.BufferGeometry();
-      g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-      return g;
-    };
-
-    // 연속 구간별로 글로우(넓고 옅은 additive) + 코어(밝은 골드) 2겹 도로.
-    let run = [];
-    const flush = () => {
-      if (run.length >= 2) {
-        const glow = new THREE.Mesh(ribbon(run, 0.22, 0.03),
-          new THREE.MeshBasicMaterial({ color: 0xffcf7a, transparent: true, opacity: 0.28,
-            side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false }));
-        glow.renderOrder = 4;
-        const core = new THREE.Mesh(ribbon(run, 0.07, 0.05),
-          new THREE.MeshBasicMaterial({ color: 0xffeec2, transparent: true, opacity: 0.98,
-            side: THREE.DoubleSide, depthWrite: false }));
-        core.renderOrder = 6;
-        this.roadGroup.add(glow, core);
-      }
-      run = [];
-    };
-    for (let i = 0; i < hf.xs.length; i++) {
-      if (hf.floor[i] === null) { flush(); continue; }
-      run.push([hf.xs[i], hf.floor[i]]);
-    }
-    flush();
-
-    // 옅은 천장 윤곽(옵션).
-    if (hf.ceiling) {
-      let crun = [];
-      const cflush = () => {
-        if (crun.length >= 2) {
-          const pos = [];
-          for (let k = 0; k < crun.length - 1; k++) {
-            pos.push(crun[k][0], crun[k][1], 0.05, crun[k + 1][0], crun[k + 1][1], 0.05);
-          }
-          const g = new THREE.BufferGeometry();
-          g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-          const line = new THREE.LineSegments(g, new THREE.LineBasicMaterial({
-            color: 0x88aaff, transparent: true, opacity: 0.25,
-          }));
-          this.ceilingGroup.add(line);
-        }
-        crun = [];
-      };
-      for (let i = 0; i < hf.xs.length; i++) {
-        if (!isFinite(hf.ceiling[i])) { cflush(); continue; }
-        crun.push([hf.xs[i], hf.ceiling[i]]);
-      }
-      cflush();
-    }
   }
 
   // 떠 있는 텍스트 라벨(CanvasTexture Sprite).
