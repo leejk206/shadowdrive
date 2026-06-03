@@ -1,0 +1,15 @@
+{
+  "id": "L10",
+  "light": { "type": "point", "vec": [10, 12, 15] },
+  "wall": { "width": 20, "height": 10 },
+  "start": [2, 8],
+  "goal": [17, 1],
+  "fixedOccluders": [],
+  "movableOccluders": [
+    { "shape": "crescent", "role": "floor", "size": [6, 3, 1], "spawn": [6, 8, 6],
+      "allow": { "translate": true, "rotate": true } },
+    { "shape": "rramp", "role": "floor", "size": [5, 3, 1], "spawn": [13, 8, 6],
+      "allow": { "translate": true, "rotate": true } }
+  ],
+  "params": { "carSpeed": 4, "gravity": 9.8, "maxClimbDeg": 35, "gapPassRatio": 0.8, "goalHW": 0.8, "goalHH": 1.0 }
+}

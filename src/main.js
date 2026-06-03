@@ -2,18 +2,55 @@
 import { Renderer } from './render/Renderer.js';
 import { InteractionController } from './ui/InteractionController.js';
 import { GameStateMachine } from './core/GameStateMachine.js';
-import { loadLevel } from './io/LevelLoader.js';
+import { loadLevel, loadManifest, validateLevel } from './io/LevelLoader.js';
+import { LevelEditor } from './ui/LevelEditor.js';
+import { loadDraft, listDrafts, mergeLevelIds } from './io/LevelStore.js';
+import { tutorialFor } from './ui/tutorials.js';
 
-const LEVELS = ['L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7'];
+let LEVELS = ['L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7'];
+let MANIFEST = LEVELS.slice();
 
 const ui = {
   go: document.getElementById('go'),
   reset: document.getElementById('reset'),
+  edit: document.getElementById('edit'),
+  export: document.getElementById('exportBtn'),
   level: document.getElementById('levelLabel'),
   hint: document.getElementById('hint'),
   banner: document.getElementById('banner'),
   phase: document.getElementById('phase'),
+  tutorial: document.getElementById('tutorial'),
+  tutStep: document.getElementById('tutStep'),
+  tutBody: document.getElementById('tutBody'),
+  tutNext: document.getElementById('tutNext'),
+  tutSkip: document.getElementById('tutSkip'),
 };
+
+// ── 튜토리얼 가이드(레벨별 단계 안내) ──
+let tutSteps = null, tutIdx = 0, tutId = null;
+const tutShown = new Set(); // 세션 내 이미 본 레벨(재방문 시 반복 표시 안 함)
+
+function initTutorial(id) {
+  tutHide();
+  const steps = tutorialFor(id);
+  if (!steps || tutShown.has(id) || mode !== 'play') return;
+  tutSteps = steps; tutIdx = 0; tutId = id;
+  renderTut();
+}
+function renderTut() {
+  if (!ui.tutorial) return;
+  ui.tutStep.textContent = `안내 ${tutIdx + 1} / ${tutSteps.length}`;
+  ui.tutBody.innerHTML = tutSteps[tutIdx];
+  ui.tutNext.textContent = (tutIdx === tutSteps.length - 1) ? '시작! ✓' : '다음 ▶';
+  ui.tutorial.style.display = 'block';
+}
+function tutAdvance() {
+  if (!tutSteps) return;
+  tutIdx += 1;
+  if (tutIdx >= tutSteps.length) { tutShown.add(tutId); tutHide(); }
+  else renderTut();
+}
+function tutHide() { if (ui.tutorial) ui.tutorial.style.display = 'none'; tutSteps = null; }
 
 function setPhase(text, color) {
   if (!ui.phase) return;
@@ -21,15 +58,33 @@ function setPhase(text, color) {
   ui.phase.style.color = color || '#9fd8ff';
 }
 
-let renderer, sm, interaction;
+let renderer, sm, interaction, editor;
 let levelIdx = 0;
-let anim = null; // GO 애니메이션 상태
+let currentLevelObj = null;   // 현재 idx로 로드된 레벨 원본(에디터 시드용)
+let mode = 'play';            // 'play' | 'edit'
+let testing = false;          // edit 모드에서 Test 시뮬레이션 진행 중
+let anim = null;
+
+// draft 우선, 없으면 파일에서 레벨 로드.
+async function loadById(id) {
+  const d = loadDraft(id);
+  if (d) {
+    const v = validateLevel(d);
+    if (!v.ok) throw new Error(`invalid draft ${id}: ${v.errors.join('; ')}`);
+    return d;
+  }
+  return loadLevel(`./levels/${id}.json`);
+}
+
+function refreshLevels() {
+  LEVELS = mergeLevelIds(MANIFEST, listDrafts());
+}
 
 async function startLevel(idx) {
   cancelAnim();
-  const lv = await loadLevel(`./levels/${LEVELS[idx]}.json`);
+  const lv = await loadById(LEVELS[idx]);
+  currentLevelObj = lv;
   sm = new GameStateMachine(lv);
-  // 가동 메시에 index/movable 표시 (인터랙션 picking용)
   sm._occluders = patchOccluderMeta(sm);
   if (interaction) interaction.resetTurn();
   renderer.fitToWall({ wall: lv.wall, start: lv.start, goal: lv.goal });
@@ -38,13 +93,14 @@ async function startLevel(idx) {
   const gHW = lv.params && lv.params.goalHW != null ? lv.params.goalHW : 0.6;
   const gHH = lv.params && lv.params.goalHH != null ? lv.params.goalHH : 0.8;
   renderer.renderPads(lv.start, lv.goal, gHW, gHH);
-  ui.level.textContent = `Level ${LEVELS[idx]}`;
+  const draftMark = loadDraft(LEVELS[idx]) ? ' *' : '';
+  ui.level.textContent = `Level ${LEVELS[idx]}${draftMark}`;
   ui.banner.style.display = 'none';
   setPhase('PLAN', '#ffd9a0');
   syncScene();
+  initTutorial(LEVELS[idx]);
 }
 
-// 가동 오클루더 part에 index/movable 플래그를 달아주는 래퍼
 function patchOccluderMeta(sm) {
   const orig = sm._occluders.bind(sm);
   return () => {
@@ -52,7 +108,7 @@ function patchOccluderMeta(sm) {
     const fixedCount = sm.level.fixedOccluders.length;
     occs.forEach((o, oi) => {
       const movable = oi >= fixedCount;
-      o.movable = movable;                       // occluder 단위 메타(렌더러가 단일 강체 메시에 사용)
+      o.movable = movable;
       o.index = movable ? oi - fixedCount : -1;
       o.parts.forEach((p) => { p.movable = movable; p.index = o.index; });
     });
@@ -65,22 +121,94 @@ function syncScene() {
   renderer.renderOccluders(occs);
   const hf = sm.recompute();
   renderer.renderHeightfield(hf);
-  // PLAN: 차는 (높은) 고정 start 위치에 정지 — 그림자에 스냅하지 않음(물리는 Go+3초 뒤 적용).
   renderer.setCar(sm.level.start[0], sm.level.start[1]);
+}
+
+// ── Edit 모드 ───────────────────────────────────────────────────────────
+function enterEdit() {
+  mode = 'edit';
+  testing = false;
+  cancelAnim();
+  clearCountdown();
+  tutHide();
+  if (!editor) {
+    editor = new LevelEditor(renderer, {
+      manifestIds: MANIFEST,
+      onTest: (level) => startTest(level),
+      onLevelsChanged: refreshLevels,
+    });
+  }
+  editor.opts.manifestIds = MANIFEST;
+  editor.enter(currentLevelObj);
+  if (interaction) interaction.resetTurn();
+  ui.go.textContent = 'Test';
+  ui.edit.textContent = 'Exit';
+  if (ui.export) ui.export.style.display = '';
+  setPhase('EDIT', '#9fd8ff');
+}
+
+function exitEdit() {
+  mode = 'play';
+  testing = false;
+  editor.exit();
+  ui.go.textContent = 'Go';
+  ui.edit.textContent = 'Edit';
+  if (ui.export) ui.export.style.display = 'none';
+  refreshLevels();
+  startLevel(levelIdx);
+}
+
+function toggleEdit() {
+  if (mode === 'play') enterEdit();
+  else exitEdit();
+}
+
+// edit 모드 Test: items에서 만든 레벨로 새 SM을 돌린다(진짜 fixed/movable 분리).
+function startTest(level) {
+  const v = validateLevel(level);
+  if (!v.ok) { showBanner('INVALID', false); return; }
+  testing = true;
+  cancelAnim();
+  clearCountdown();
+  tutHide();
+  sm = new GameStateMachine(level);
+  sm._occluders = patchOccluderMeta(sm);
+  renderer.fitToWall({ wall: level.wall, start: level.start, goal: level.goal });
+  renderer.setLight(level.light);
+  const gHW = level.params && level.params.goalHW != null ? level.params.goalHW : 0.6;
+  const gHH = level.params && level.params.goalHH != null ? level.params.goalHH : 0.8;
+  renderer.renderPads(level.start, level.goal, gHW, gHH);
+  setPhase('TEST', '#ffd27d');
+  syncScene();
+  onGo();
+}
+
+// ── 버튼/키 디스패치 ────────────────────────────────────────────────────
+function onGoButton() {
+  if (mode === 'edit') { if (!testing) editor.requestTest(); }
+  else onGo();
+}
+
+function onResetButton() {
+  if (mode === 'edit') {
+    if (testing) { testing = false; setPhase('EDIT', '#9fd8ff'); editor.reenter(); }
+    return;
+  }
+  onReset();
 }
 
 function onGo() {
   if (sm.phase !== 'PLAN') return;
-  setPhase('GO', '#ffd27d');
-  const res = sm.go();                         // 그림자/도로 freeze + 궤적 계산
-  // 3·2·1 카운트다운 → 물체 본체만 사라지고(그림자/도로 유지) → 차 출발.
+  if (!testing) setPhase('GO', '#ffd27d');
+  const res = sm.go();
   startCountdown(3, () => {
-    renderer.setOccluderBodiesVisible(false);  // 본체 invisible, 캐스트 섀도는 남음
+    renderer.setOccluderBodiesVisible(false);
     animateCar(res, () => {
       const ok = res.result === 'CLEAR';
       setPhase(ok ? 'CLEAR ✓' : 'FAIL ✗', ok ? '#5f5' : '#f55');
       showBanner(ok ? 'CLEAR ✓' : 'FAIL ✗', ok);
-      if (ok) {
+      // edit 모드 Test에서는 다음 레벨로 넘어가지 않는다(Reset으로 편집 복귀).
+      if (ok && !testing) {
         setTimeout(() => { levelIdx = Math.min(levelIdx + 1, LEVELS.length - 1); startLevel(levelIdx); }, 1500);
       }
     });
@@ -110,11 +238,11 @@ function startCountdown(seconds, done) {
 
 function onReset() {
   cancelAnim();
-  clearCountdown();                 // 카운트다운 중이면 중단
+  clearCountdown();
   if (sm.phase !== 'PLAN') sm.reset();
   ui.banner.style.display = 'none';
   setPhase('PLAN', '#ffd9a0');
-  syncScene();                      // 오클루더 메시 재생성 → 본체 다시 보임
+  syncScene();
 }
 
 function animateCar(res, done) {
@@ -124,7 +252,6 @@ function animateCar(res, done) {
   const step = () => {
     if (i >= traj.length) { done(); return; }
     const [x, y] = traj[i];
-    // 다음 샘플과의 차분으로 slope 추정. 마지막 샘플은 직전 slope 유지.
     let slope = 0;
     const j = Math.min(i + 2, traj.length - 1);
     if (j > i) {
@@ -154,30 +281,47 @@ function loop() {
   requestAnimationFrame(loop);
 }
 
-function main() {
+async function main() {
   renderer = new Renderer(document.body);
-  // 상태머신은 startLevel에서 생성되므로 인터랙션은 게터로 접근
+  MANIFEST = await loadManifest();
+  refreshLevels();
+
   interaction = new InteractionController(
     renderer,
-    () => (sm ? sm.phase : 'GO'),
+    () => {
+      if (mode === 'edit' && !testing) return 'PLAN';
+      return sm ? sm.phase : 'GO';
+    },
     (index, t) => {
+      if (mode === 'edit' && !testing) return editor.applyTransform(index, t);
       sm.setMovableTransform(index, t);
       const hf = sm.recompute();
       renderer.renderHeightfield(hf);
-      // 차는 고정 start 위치에 정지(그림자 스냅 없음). 물리는 Go+3초 뒤.
       renderer.setCar(sm.level.start[0], sm.level.start[1]);
       const m = sm.movables[index];
       return { pos: m.pos.slice(), rot: Array.isArray(m.rot) ? m.rot.slice() : m.rot };
-    }
+    },
+    (index) => { if (mode === 'edit' && !testing) editor.select(index); }
   );
-  ui.go.addEventListener('click', onGo);
-  ui.reset.addEventListener('click', onReset);
+
+  ui.go.addEventListener('click', onGoButton);
+  ui.reset.addEventListener('click', onResetButton);
+  if (ui.edit) ui.edit.addEventListener('click', toggleEdit);
+  if (ui.export) ui.export.addEventListener('click', () => { if (editor) editor._export(); });
+  if (ui.tutNext) ui.tutNext.addEventListener('click', tutAdvance);
+  if (ui.tutSkip) ui.tutSkip.addEventListener('click', () => { if (tutId) tutShown.add(tutId); tutHide(); });
+
   window.addEventListener('keydown', (e) => {
-    if (e.key === ' ') onGo();
-    if (e.key === 'r') onReset();
-    const n = parseInt(e.key, 10);
-    if (n >= 1 && n <= LEVELS.length) { levelIdx = n - 1; startLevel(levelIdx); }
+    if (e.target && /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return; // 폼 입력 중 단축키 무시
+    if (e.key === ' ') onGoButton();
+    if (e.key === 'r') onResetButton();
+    if (e.key === 'e') toggleEdit();
+    if (mode === 'play') {
+      const n = parseInt(e.key, 10);
+      if (n >= 1 && n <= LEVELS.length) { levelIdx = n - 1; startLevel(levelIdx); }
+    }
   });
+
   startLevel(levelIdx).then(loop);
 }
 

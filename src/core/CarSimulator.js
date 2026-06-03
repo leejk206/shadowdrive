@@ -5,7 +5,8 @@
 
 const DT = 0.008;     // 적분 시간 간격(초)
 const EPS = 1e-3;     // 경사 측정용 미소 거리
-const ACCEL = 3;      // 엔진 추력 계수 (목표 속도로 수렴)
+const ENGINE_ACCEL = 7; // 엔진 추력(carSpeed 미만에서만 적용, units/s²). 평지 순항·완만 램프 등반.
+const EXCESS_DECAY = 1.0; // carSpeed 초과분의 선형 감쇠율(1/s). 작을수록 내리막 운동량이 오래 지속(스키점프).
 const SLOPE_CLAMP = 20; // 경사 클램프(수치 안정)
 const MAX_STEP_UP = 0.5; // 공중에서 올라탈 수 있는 floor 상승 한계(이상은 그림자 벽=장애물, 순간이동 금지)
 const MAX_STEEP_RISE = 2.5; // grounded로 maxClimbDeg 초과 경사를 오를 수 있는 누적 높이 한계
@@ -50,6 +51,8 @@ function ceilingAt(field, x) {
 export function simulate(field, params, car) {
   const g = params.gravity;
   const carSpeed = params.carSpeed;
+  // 엔진은 carSpeed 미만에서만 추력(평지 순항·등반), carSpeed 초과분은 완만 감쇠(EXCESS_DECAY).
+  // 내리막에선 중력 접선 성분이 더해져 carSpeed를 초과 → 운동량 축적·지속(스키점프 발사).
   // iter-4: 등반 경사 한계 복원. 접지 차는 maxClimbDeg 초과 경사를 누적 MAX_STEEP_RISE까지만 오른다.
   const maxClimbDeg = params.maxClimbDeg != null ? params.maxClimbDeg : 35;
   const tanMax = Math.tan((maxClimbDeg * Math.PI) / 180);
@@ -139,11 +142,14 @@ export function simulate(field, params, car) {
       const tx = 1 / tlen, ty = slope / tlen;
       // 접선 방향 속력
       let s = vx * tx + vy * ty;
-      // 중력 접선 성분: 내리막(slope<0) → 가속, 오르막 → 감속
-      s += -g * (slope / tlen) * DT;
-      // 엔진 추력: carSpeed로 수렴
-      s += ACCEL * (carSpeed - s) * DT;
-      if (s < 0.1) s = 0.1; // 항상 전진 시도
+      // 뉴턴식 힘 합산(가속도 적분):
+      s += -g * (slope / tlen) * DT;       // ① 중력 접선 성분: 내리막 가속 / 오르막 감속
+      // ② 엔진: carSpeed 미만일 때만 추력(평지 순항·완만 램프 등반). carSpeed 도달 후엔 끔.
+      //    ③ carSpeed 초과분(=내리막 중력으로 쌓인 운동량)은 완만 선형 감쇠 → 발사까지 지속.
+      //    평지에선 s=carSpeed에서 추력·감쇠 모두 0 → 정확히 carSpeed 유지(런어웨이 없음).
+      if (s < carSpeed) s += ENGINE_ACCEL * DT;
+      else s -= EXCESS_DECAY * (s - carSpeed) * DT;
+      if (s < 0.1) s = 0.1; // 최소 전진(스톨/역주행 방지)
       vx = s * tx; vy = s * ty;
     } else {
       // 공중 또는 void 위: 추력 없음, 중력만.

@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { directionalLightPosition } from '../core/mathx.js';
+import { shapeProfile, PROFILE_SHAPES } from '../core/shapes.js';
 
 export class Renderer {
   constructor(container) {
@@ -327,9 +328,20 @@ export class Renderer {
       if (part.shape === 'prism') {
         g = new THREE.CylinderGeometry(part.size[0] / 2, part.size[0] / 2, part.size[2], 3);
         g.rotateX(Math.PI / 2);
+      } else if (PROFILE_SHAPES.has(part.shape)) {
+        // 볼록 단면(crescent/dome/rramp)을 z로 압출 → 코어의 primitiveVerts와 동일 단면.
+        const prof = shapeProfile(part.shape, part.size);
+        const shp = new THREE.Shape();
+        shp.moveTo(prof[0][0], prof[0][1]);
+        for (let k = 1; k < prof.length; k++) shp.lineTo(prof[k][0], prof[k][1]);
+        shp.closePath();
+        g = new THREE.ExtrudeGeometry(shp, { depth: part.size[2], bevelEnabled: false, steps: 1 });
+        g.translate(0, 0, -part.size[2] / 2); // z 중심 정렬
       } else {
         g = new THREE.BoxGeometry(part.size[0], part.size[1], part.size[2]);
       }
+      // part-local 기울기(분해된 오목 곡면 세그먼트). L/T/notch는 rotRel=0 → no-op.
+      if (part.rotRel) g.rotateZ((part.rotRel * Math.PI) / 180);
       const off = part.posRel || [0, 0, 0];
       g.translate(off[0], off[1], off[2]);
       const ng = g.index ? g.toNonIndexed() : g;

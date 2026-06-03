@@ -33,27 +33,36 @@ test('목표 직전 넓은 구덩이(램프 없음) + 저속 → 추락 FAIL "fe
   assert.match(r.reason, /fell/i);
 });
 
-test('구덩이 앞 램프가 차를 목표 영역으로 발사 → CLEAR + 공중 구간 존재', () => {
-  // 평지(0~5) → 상승 램프(5~6, 높이 0→2) → 구덩이(6~8.5 void) → 착지 평지(높이 0).
-  // 목표 영역을 착지 평지 위(goalX=9.5)에 둔다.
-  const ramp = (x) => {
-    if (x < 5) return 0;
-    if (x < 6) return (x - 5) * 2;     // 0 → 2, 볼록 입술
-    if (x < 8.5) return null;          // 구덩이
-    return 0;                          // 착지 평지
-  };
-  const f = makeField(-1, 13, 561, ramp);
-  const car = { ...baseCar, goalX: 9.5, goalY: 0, goalHW: 1.5, goalHH: 2.0 };
-  const r = simulate(f, { ...params, carSpeed: 9 }, car);
-  assert.equal(r.result, 'CLEAR', `reason=${r.reason}`);
-
-  // 공중 구간 증명: 구덩이(void, floor=null) 위에서 y가 착지 평지 높이(0)보다
-  // 명확히 위로 떠 있는 점이 존재 → 발사체로 비행 중이었다는 증거.
-  const airborne = r.trajectory.some(([px, py]) => {
-    const gh = ramp(px);
-    return gh === null && py > 0.5; // void 위인데 공중에 떠 있음
+test('내리막 in-run으로 가속해 입술에서 발사 → 갭을 넘어 CLEAR(스키점프)', () => {
+  // 내리막 in-run(2.5→0, 27°)으로 carSpeed 이상 속도를 쌓고, 완만한 입술(0→0.4, 27°)에서
+  // 발사 → 폭 2.0 갭(void)을 포물선으로 넘어 착지. (기존 '동력으로 급경사 등반 후 발사'는
+  // 뉴턴 물리에선 비물리적이라, 실제 스키점프=내리막 가속→발사 로 교체.)
+  const f = makeField(-1, 16, 681, (x) => {
+    if (x < 5) return 2.5 - (x > 0 ? x : 0) * (2.5 / 5); // 내리막 in-run
+    if (x < 5.8) return (x - 5) * 0.5;                   // 완만 입술 0→0.4
+    if (x < 7.8) return null;                            // 갭(폭 2.0)
+    return 0;                                            // 착지
   });
-  assert.ok(airborne, '궤적에 공중(비행) 구간이 있어야 함');
+  const car = { ...baseCar, startX: 0, startY: null, goalX: 9.3, goalY: 0, goalHW: 1.5, goalHH: 2.0 };
+  const r = simulate(f, params, car);
+  assert.equal(r.result, 'CLEAR', `reason=${r.reason}`);
+  // 갭(void) 위에 궤적 점이 존재 = 접지 불가 영역을 비행(발사체)했다는 증거.
+  const airborne = r.trajectory.some(([px]) => px > 5.85 && px < 7.75);
+  assert.ok(airborne, '갭 위 비행 구간이 있어야 함');
+});
+
+test('내리막에서 중력으로 carSpeed를 초과해 가속한다(운동량 축적)', () => {
+  // 긴 완만 내리막(6→0, slope -0.5). 접선 속도가 carSpeed(=4)를 뚜렷이 초과해야 한다.
+  // (양방향 크루즈였던 기존 모델은 carSpeed로 제동돼 초과 불가 → 스키점프 불능이었음.)
+  const f = makeField(-1, 20, 801, (x) => (x < 12 ? 6 - (x > 0 ? x : 0) * (6 / 12) : 0));
+  const r = simulate(f, params, { ...baseCar, startX: 0, startY: null, goalX: 16 });
+  let smax = 0;
+  const t = r.trajectory;
+  for (let i = 1; i < t.length; i++) {
+    const s = Math.hypot(t[i][0] - t[i - 1][0], t[i][1] - t[i - 1][1]) / 0.008;
+    if (s > smax) smax = s;
+  }
+  assert.ok(smax > params.carSpeed * 1.25, `내리막 가속 미흡: maxSpeed=${smax.toFixed(2)}`);
 });
 
 test('도로가 goalX 못 미쳐도 목표 영역 안에서 끝나면 → CLEAR', () => {

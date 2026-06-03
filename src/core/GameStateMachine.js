@@ -2,7 +2,7 @@
 import { projectScene } from './ShadowProjector.js';
 import { buildHeightfield } from './ColliderBuilder.js';
 import { simulate } from './CarSimulator.js';
-import { expandCompound, transformVerts } from './shapes.js';
+import { expandCompound, transformVerts, composeRotZ } from './shapes.js';
 
 const SAMPLES = 200;
 
@@ -29,12 +29,14 @@ export class GameStateMachine {
       const rot = (typeof src.rot === 'number' || Array.isArray(src.rot)) ? src.rot : 0;
       const parts = parts0.map((p) => {
         const [rx, ry, rz] = transformVerts([p.posRel], [0, 0, 0], rot)[0];
+        // part-local 기울기(rotRel)를 오클루더 회전과 합성. rotRel=0이면 occluder rot 그대로(L/T/notch 불변).
         return {
           shape: p.shape,
           size: p.size,
           pos: [src.pos[0] + rx, src.pos[1] + ry, src.pos[2] + rz],
-          rot,
-          posRel: p.posRel,  // 로컬 오프셋(렌더 강체 병합용) — world pos와 별개로 보존
+          rot: composeRotZ(rot, p.rotRel || 0),
+          posRel: p.posRel,    // 로컬 오프셋(렌더 강체 병합용) — world pos와 별개로 보존
+          rotRel: p.rotRel || 0, // 로컬 기울기(렌더 강체 병합용)
         };
       });
       // origin/occRot: 렌더러가 occluder를 단일 강체(병합 메시)로 배치/회전하는 데 사용.

@@ -7,10 +7,11 @@
 import * as THREE from 'three';
 
 export class InteractionController {
-  constructor(renderer, getPhase, onChange) {
+  constructor(renderer, getPhase, onChange, onSelect) {
     this.renderer = renderer;
     this.getPhase = getPhase;
     this.onChange = onChange;
+    this.onSelect = onSelect || null;   // edit 모드: 잡은 오클루더 index 통지(선택 동기화)
     this.raycaster = new THREE.Raycaster();
     this.pointer = new THREE.Vector2();
     this.drag = null;       // { mesh, index, mode:'rotate'|'translate', lastX, lastY, planeZ }
@@ -105,6 +106,7 @@ export class InteractionController {
     // hover emissive 유지(드래그 중 강조).
     if (this.hovered !== mesh) { this._clearHover(); mesh.material.emissive.setHex(mesh.userData.hoverEmissive); this.hovered = mesh; }
     this.dom.style.cursor = 'grabbing';
+    if (this.onSelect) this.onSelect(this.drag.index);
   }
 
   _up() {

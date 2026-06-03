@@ -1,5 +1,5 @@
 // src/io/LevelLoader.js
-const SHAPES = new Set(['bar', 'prism', 'L', 'T', 'notch']);
+const SHAPES = new Set(['bar', 'prism', 'L', 'T', 'notch', 'crescent', 'dome', 'rramp']);
 const ROLES = new Set(['floor', 'ceiling']);
 
 /** 레벨 객체 구조 검증. { ok, errors } 반환 */
@@ -29,6 +29,21 @@ export function validateLevel(lv) {
   for (const k of ['carSpeed', 'gravity', 'maxClimbDeg', 'gapPassRatio'])
     if (typeof p[k] !== 'number') e.push(`params.${k} required`);
   return { ok: e.length === 0, errors: e };
+}
+
+const BUILTIN_IDS = ['L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7'];
+
+/** levels/index.json 매니페스트를 로드해 레벨 id 배열을 반환. 없거나 깨지면 빌트인 폴백. */
+export async function loadManifest(url = './levels/index.json') {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return BUILTIN_IDS.slice();
+    const arr = await res.json();
+    if (Array.isArray(arr) && arr.length && arr.every((x) => typeof x === 'string')) return arr;
+    return BUILTIN_IDS.slice();
+  } catch {
+    return BUILTIN_IDS.slice();
+  }
 }
 
 /** URL에서 레벨 JSON을 fetch + 검증 (브라우저용) */
