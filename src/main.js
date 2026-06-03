@@ -15,6 +15,8 @@ const ui = {
   reset: document.getElementById('reset'),
   edit: document.getElementById('edit'),
   hideObj: document.getElementById('hideObj'),
+  prevLvl: document.getElementById('prevLvl'),
+  nextLvl: document.getElementById('nextLvl'),
   stageTimer: document.getElementById('stageTimer'),
   export: document.getElementById('exportBtn'),
   level: document.getElementById('levelLabel'),
@@ -321,6 +323,13 @@ function animateCar(res, done) {
 
 function cancelAnim() { if (anim) cancelAnimationFrame(anim); anim = null; }
 
+// 스테이지 이동(이전/다음). 범위 클램프. play 모드 전용.
+function gotoLevel(idx) {
+  if (mode !== 'play') return;
+  const n = Math.max(0, Math.min(LEVELS.length - 1, idx));
+  if (n !== levelIdx) { levelIdx = n; startLevel(levelIdx); }
+}
+
 function showBanner(text, ok) {
   ui.banner.textContent = text;
   ui.banner.style.color = ok ? '#5f5' : '#f55';
@@ -361,6 +370,8 @@ async function main() {
   ui.reset.addEventListener('click', onResetButton);
   if (ui.edit) ui.edit.addEventListener('click', toggleEdit);
   if (ui.hideObj) ui.hideObj.addEventListener('click', toggleHideBodies);
+  if (ui.prevLvl) ui.prevLvl.addEventListener('click', () => gotoLevel(levelIdx - 1));
+  if (ui.nextLvl) ui.nextLvl.addEventListener('click', () => gotoLevel(levelIdx + 1));
   if (ui.export) ui.export.addEventListener('click', () => { if (editor) editor._export(); });
   if (ui.tutNext) ui.tutNext.addEventListener('click', tutAdvance);
   if (ui.tutSkip) ui.tutSkip.addEventListener('click', () => { if (tutId) tutShown.add(tutId); tutHide(); });
@@ -372,8 +383,8 @@ async function main() {
     if (e.key === 'e') toggleEdit();
     if (e.key === 'h') toggleHideBodies();
     if (mode === 'play') {
-      const n = parseInt(e.key, 10);
-      if (n >= 1 && n <= LEVELS.length) { levelIdx = n - 1; startLevel(levelIdx); }
+      if (e.key === 'ArrowRight') { e.preventDefault(); gotoLevel(levelIdx + 1); }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); gotoLevel(levelIdx - 1); }
     }
   });
 
