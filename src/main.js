@@ -149,7 +149,7 @@ async function startLevel(idx) {
   setPhase('PLAN', '#ffd9a0');
   setBodiesHidden(false);     // 새 레벨은 항상 본체 보이게 시작
   syncScene();
-  startStageTimer();          // 스테이지 30초 시작
+  stopStageTimer();           // PLAN(배치)은 무제한 — 타이머는 GO부터
   initTutorial(LEVELS[idx]);
 }
 
@@ -255,6 +255,7 @@ function onResetButton() {
 
 function onGo() {
   if (sm.phase !== 'PLAN') return;
+  if (mode === 'play') startStageTimer();   // 카운트다운은 GO를 누른 시점부터
   if (!testing) setPhase('GO', '#ffd27d');
   const res = sm.go();
   startCountdown(3, () => {
@@ -300,7 +301,7 @@ function onReset() {
   ui.banner.style.display = 'none';
   setPhase('PLAN', '#ffd9a0');
   syncScene();
-  startStageTimer();          // 리셋 = 시도당 30초 재시작
+  stopStageTimer();           // PLAN 복귀 → 타이머 정지(다음 GO부터 다시 30초)
 }
 
 function animateCar(res, done) {
