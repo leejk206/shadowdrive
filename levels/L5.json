@@ -2,11 +2,11 @@
   "id": "L5",
   "light": { "type": "point", "vec": [9, 11, 15] },
   "wall": { "width": 20, "height": 10 },
-  "start": [2, 3],
-  "goal": [18, 1],
+  "start": [2, 2],
+  "goal": [17, 3],
   "fixedOccluders": [
     { "shape": "bar", "role": "ceiling", "size": [3, 8, 1], "pos": [6, 8, 2.5], "rot": 0 },
-    { "shape": "bar", "role": "ceiling", "size": [3, 8, 1], "pos": [14, 8, 2.5], "rot": 0 }
+    { "shape": "dome", "role": "floor", "size": [5, 3, 1], "pos": [13, 2.2, 2.5], "rot": 0 }
   ],
   "movableOccluders": [
     { "shape": "bar", "role": "floor", "size": [8, 0.5, 1], "spawn": [5, 7, 6],

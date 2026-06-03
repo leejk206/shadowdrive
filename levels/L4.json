@@ -1,13 +1,15 @@
 {
   "id": "L4",
-  "light": { "type": "point", "vec": [8, 11, 14] },
-  "wall": { "width": 15, "height": 9 },
-  "start": [2, 7],
-  "goal": [13, 1],
-  "fixedOccluders": [],
+  "light": { "type": "point", "vec": [7, 11, 14] },
+  "wall": { "width": 16, "height": 11 },
+  "start": [2, 8],
+  "goal": [14, 1.5],
+  "fixedOccluders": [
+    { "shape": "bar", "role": "ceiling", "size": [6, 3, 1], "pos": [10, 6, 2.5], "rot": 0 }
+  ],
   "movableOccluders": [
-    { "shape": "crescent", "role": "floor", "size": [7, 3, 1], "spawn": [11, 8, 6],
+    { "shape": "crescent", "role": "floor", "size": [8, 3, 1], "spawn": [8, 7, 6],
       "allow": { "translate": true, "rotate": true } }
   ],
-  "params": { "carSpeed": 4, "gravity": 9.8, "maxClimbDeg": 35, "gapPassRatio": 0.8, "goalHW": 0.8, "goalHH": 1.0 }
+  "params": { "carSpeed": 4, "gravity": 9.8, "maxClimbDeg": 35, "gapPassRatio": 0.8, "goalHW": 1.0, "goalHH": 1.2 }
 }

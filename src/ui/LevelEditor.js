@@ -5,11 +5,11 @@
 //  - localStorage 자동저장, Export(레벨 JSON + index.json 다운로드 + 클립보드)
 // Test/Reset 시뮬레이션은 main이 소유(onTest 콜백). 에디터는 데이터·렌더·패널만 책임진다.
 import { GameStateMachine } from '../core/GameStateMachine.js';
-import { validateLevel } from '../io/LevelLoader.js';
+import { validateLevel, loadLevel } from '../io/LevelLoader.js';
 import {
   itemsFromLevel, levelFromItems, blankLevel, newItem,
   serializeLevel, buildManifest, mergeLevelIds,
-  saveDraft, listDrafts, downloadText, copyToClipboard,
+  saveDraft, loadDraft, deleteDraft, listDrafts, downloadText, copyToClipboard,
 } from '../io/LevelStore.js';
 
 const SHAPES = ['bar', 'prism', 'L', 'T', 'notch', 'crescent', 'dome', 'rramp'];
@@ -137,7 +137,7 @@ export class LevelEditor {
   }
 
   _autosave() {
-    if (!this.active) return;
+    if (!this.active || this._suppressSave) return;
     saveDraft(this.globals.id, this.getLevelObject());
     if (this.opts.onLevelsChanged) this.opts.onLevelsChanged();
   }
@@ -213,9 +213,15 @@ export class LevelEditor {
     }
 
     // 액션 + 상태
+    const hasDraft = !!loadDraft(g.id);
+    const inManifest = (this.opts.manifestIds || []).includes(g.id);
     html += `<div class="ed-sec">파일</div><div class="ed-row">
       <button class="ed-btn ed-new">New</button>
-      <button class="ed-btn ed-export">Export</button></div>`;
+      <button class="ed-btn ed-export">Export</button>
+      <button class="ed-btn ed-revert"${hasDraft && inManifest ? '' : ' disabled'} title="이 레벨의 로컬 드래프트를 삭제하고 파일 내용으로 되돌립니다">↩ 파일로 되돌리기</button></div>`;
+    html += `<div class="ed-draftnote">${hasDraft
+      ? `✎ 로컬 드래프트 저장본이 파일을 가리고 있습니다${inManifest ? '' : ' (파일 없음 — 되돌릴 원본이 없음)'}`
+      : '저장본 없음 — 파일 내용 그대로'}</div>`;
     html += `<div class="ed-status" id="edStatus"></div>`;
 
     this.panel.innerHTML = html;
@@ -236,6 +242,8 @@ export class LevelEditor {
     if (nb) nb.addEventListener('click', () => this._newLevel());
     const ex = this.panel.querySelector('.ed-export');
     if (ex) ex.addEventListener('click', () => this._export());
+    const rv = this.panel.querySelector('.ed-revert');
+    if (rv && !rv.disabled) rv.addEventListener('click', () => this._revert());
   }
 
   _onField(e) {
@@ -278,6 +286,28 @@ export class LevelEditor {
   _newLevel() {
     const id = this._nextLevelId();
     this.enter(blankLevel(id));
+  }
+
+  // 로컬 드래프트를 삭제하고 levels/<id>.json 파일 내용으로 되돌린다.
+  // enter()가 _autosave로 드래프트를 재생성하지 않도록 _suppressSave로 가드한다.
+  async _revert() {
+    const id = this.globals.id;
+    if (!(this.opts.manifestIds || []).includes(id)) return; // 파일 없는 draft-only 레벨은 대상 아님
+    let lv;
+    try {
+      lv = await loadLevel(`./levels/${id}.json`);
+    } catch (e) {
+      const st = this.panel && this.panel.querySelector('#edStatus');
+      if (st) { st.textContent = `✗ 파일 로드 실패: ${e.message}`; st.className = 'ed-status err'; }
+      return;
+    }
+    deleteDraft(id);
+    this._suppressSave = true;
+    this.enter(lv);          // 파일 내용으로 에디터 재시드 (autosave 억제됨 → 드래프트 미생성)
+    this._suppressSave = false;
+    if (this.opts.onLevelsChanged) this.opts.onLevelsChanged();
+    const st = this.panel && this.panel.querySelector('#edStatus');
+    if (st) { st.textContent = `↩ 드래프트 삭제 — ${id}.json 파일 내용으로 되돌림`; st.className = 'ed-status ok'; }
   }
 
   _nextLevelId() {
