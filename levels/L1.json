@@ -42,7 +42,7 @@
     }
   ],
   "params": {
-    "carSpeed": 4,
+    "carSpeed": 6,
     "gravity": 9.8,
     "maxClimbDeg": 35,
     "gapPassRatio": 2.5

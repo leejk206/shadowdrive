@@ -13,5 +13,5 @@
     { "shape": "bar", "role": "floor", "size": [8, 0.5, 1], "spawn": [14, 8, 6],
       "allow": { "translate": true, "rotate": true } }
   ],
-  "params": { "carSpeed": 4, "gravity": 9.8, "maxClimbDeg": 35, "gapPassRatio": 0.8, "goalHW": 1.0, "goalHH": 1.2 }
+  "params": { "carSpeed": 6, "gravity": 9.8, "maxClimbDeg": 35, "gapPassRatio": 0.8, "goalHW": 1.0, "goalHH": 1.2 }
 }

@@ -9,5 +9,5 @@
     { "shape": "bar", "role": "floor", "size": [5, 0.4, 1], "spawn": [4, 6, 6],
       "allow": { "translate": true, "rotate": true } }
   ],
-  "params": { "carSpeed": 4, "gravity": 9.8, "maxClimbDeg": 35, "gapPassRatio": 0.8 }
+  "params": { "carSpeed": 6, "gravity": 9.8, "maxClimbDeg": 35, "gapPassRatio": 0.8 }
 }

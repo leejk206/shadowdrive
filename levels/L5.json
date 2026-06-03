@@ -6,7 +6,7 @@
   "goal": [17, 3],
   "fixedOccluders": [
     { "shape": "bar", "role": "ceiling", "size": [3, 8, 1], "pos": [6, 8, 2.5], "rot": 0 },
-    { "shape": "dome", "role": "floor", "size": [5, 3, 1], "pos": [13, 2.2, 2.5], "rot": 0 }
+    { "shape": "dome", "role": "floor", "size": [5, 3.9, 1], "pos": [13, 2.2, 2.5], "rot": 0 }
   ],
   "movableOccluders": [
     { "shape": "bar", "role": "floor", "size": [8, 0.5, 1], "spawn": [5, 7, 6],
@@ -14,5 +14,5 @@
     { "shape": "bar", "role": "floor", "size": [8, 0.5, 1], "spawn": [14, 7, 6],
       "allow": { "translate": true, "rotate": true } }
   ],
-  "params": { "carSpeed": 4, "gravity": 9.8, "maxClimbDeg": 35, "gapPassRatio": 0.8, "goalHW": 1.0, "goalHH": 1.2 }
+  "params": { "carSpeed": 6, "gravity": 9.8, "maxClimbDeg": 35, "gapPassRatio": 0.8, "goalHW": 1.0, "goalHH": 1.2 }
 }
