@@ -271,15 +271,8 @@ function animateCar(res, done) {
   cancelAnim();
   const step = () => {
     if (i >= traj.length) { done(); return; }
-    const [x, y] = traj[i];
-    let slope = 0;
-    const j = Math.min(i + 2, traj.length - 1);
-    if (j > i) {
-      const dx = traj[j][0] - x;
-      const dy = traj[j][1] - y;
-      if (Math.abs(dx) > 1e-6) slope = Math.atan2(dy, dx);
-    }
-    renderer.setCar(x, y, slope);
+    const p = traj[i];
+    renderer.setCar(p.x, p.y, p.angle);   // 차체 중심 + 회전(전복 포함)
     renderer.render();
     i += 2;
     anim = requestAnimationFrame(step);

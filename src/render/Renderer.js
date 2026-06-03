@@ -215,40 +215,41 @@ export class Renderer {
   // 밝은 벽이 비쳐 어두운 도로 위에서도 차로 인식된다.
   _makeCar() {
     const g = new THREE.Group();
-    // 도로 castShadow와 같은 톤의 어두운 실루엣(불투명). pivot: y=0 = 노면 접촉선.
+    // 어두운 실루엣. 원점 = 차체 무게중심(물리 chassis center). 회전이 중심 기준이라
+    // 전복(angle→±π)도 자연스럽게 표현된다. 치수는 VehicleSimulator 기본값과 맞춤
+    // (hw≈0.6, hh≈0.22, wheelR≈0.26, 바퀴 ±0.42·아래 0.35).
     const mat = new THREE.MeshBasicMaterial({ color: 0x130c06 });
 
-    // 측면 차체 외곽. 길이 ~0.96(콜라이더 L=1), 높이 ~0.5.
     const body = new THREE.Shape();
-    body.moveTo(0.48, 0.12);
-    body.lineTo(0.48, 0.27);
-    body.lineTo(0.30, 0.30);
-    body.lineTo(0.18, 0.50);   // 앞 유리 상단
-    body.lineTo(-0.16, 0.50);  // 지붕
-    body.lineTo(-0.30, 0.30);
-    body.lineTo(-0.48, 0.27);
-    body.lineTo(-0.48, 0.12);
+    body.moveTo(-0.6, -0.18);
+    body.lineTo(0.6, -0.18);
+    body.lineTo(0.6, 0.06);
+    body.lineTo(0.32, 0.10);
+    body.lineTo(0.16, 0.30);   // 앞유리 상단
+    body.lineTo(-0.18, 0.30);  // 지붕
+    body.lineTo(-0.34, 0.10);
+    body.lineTo(-0.6, 0.06);
     body.closePath();
-
-    // 창문 컷아웃 2개(앞/뒤) — hole로 추가하면 빛이 통과해 밝게 보인다.
     const front = new THREE.Path();
-    front.moveTo(0.03, 0.32); front.lineTo(0.145, 0.32); front.lineTo(0.105, 0.46); front.lineTo(0.03, 0.46); front.closePath();
+    front.moveTo(0.02, 0.12); front.lineTo(0.135, 0.12); front.lineTo(0.095, 0.26); front.lineTo(0.02, 0.26); front.closePath();
     const rear = new THREE.Path();
-    rear.moveTo(-0.02, 0.32); rear.lineTo(-0.02, 0.46); rear.lineTo(-0.125, 0.46); rear.lineTo(-0.155, 0.32); rear.closePath();
+    rear.moveTo(-0.03, 0.12); rear.lineTo(-0.03, 0.26); rear.lineTo(-0.135, 0.26); rear.lineTo(-0.165, 0.12); rear.closePath();
     body.holes.push(front, rear);
-
     g.add(new THREE.Mesh(new THREE.ShapeGeometry(body), mat));
 
-    // 바퀴 2개(실루엣 일부). 노면 접촉 위해 중심 y = 반지름.
-    const r = 0.13;
-    for (const wx of [0.28, -0.28]) {
+    // 바퀴 2개 — 물리 바퀴 로컬 위치. 허브 점으로 회전 가시화.
+    const r = 0.26;
+    const hubMat = new THREE.MeshBasicMaterial({ color: 0x6a4a30 });
+    for (const wx of [0.42, -0.42]) {
       const w = new THREE.Mesh(new THREE.CircleGeometry(r, 24), mat);
-      w.position.set(wx, r, 0.001);
+      w.position.set(wx, -0.35, 0.001);
       g.add(w);
+      const hub = new THREE.Mesh(new THREE.CircleGeometry(r * 0.34, 12), hubMat);
+      hub.position.set(wx, -0.35, 0.002);
+      g.add(hub);
     }
 
     g.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; o.renderOrder = 6; } });
-    g.userData.halfHeight = 0.25; // 호환용
     return g;
   }
 
@@ -482,11 +483,10 @@ export class Renderer {
     }
   }
 
-  setCar(x, y, slopeRad = 0) {
-    // y 는 floor 윤곽선상의 노면 점. 차 그룹의 발(y=0)이 (x, y)에 오도록 배치.
-    // 벽 평면 바로 앞(z≈0.03)에 납작하게 둔다 → 도로 그림자와 같은 평면, 시차 없음.
+  setCar(x, y, angle = 0) {
+    // (x,y)=물리 차체 중심, angle=차체 회전(라디안, 전복 포함). 벽 평면 바로 앞(z≈0.03).
     this.car.position.set(x, y, 0.03);
-    this.car.rotation.z = slopeRad;   // 화면 평면 회전 = 피칭(2.5D 정면뷰)
+    this.car.rotation.z = angle;
     this.car.visible = true;
   }
 
