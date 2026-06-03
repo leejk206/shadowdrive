@@ -1,15 +1,93 @@
 {
   "id": "L10",
-  "light": { "type": "point", "vec": [9, 11, 14] },
-  "wall": { "width": 18, "height": 10 },
-  "start": [2, 7],
-  "goal": [15, 1],
-  "fixedOccluders": [],
-  "movableOccluders": [
-    { "shape": "bar", "role": "floor", "size": [6, 0.6, 1], "spawn": [6, 6, 6],
-      "allow": { "translate": true, "rotate": true } },
-    { "shape": "bar", "role": "floor", "size": [6, 0.6, 1], "spawn": [12, 6, 6],
-      "allow": { "translate": true, "rotate": true } }
+  "light": {
+    "type": "point",
+    "vec": [
+      9,
+      11,
+      14
+    ]
+  },
+  "wall": {
+    "width": 18,
+    "height": 10
+  },
+  "start": [
+    2,
+    11
   ],
-  "params": { "carSpeed": 6, "gravity": 9.8, "maxClimbDeg": 35, "gapPassRatio": 0.8, "goalHW": 0.9, "goalHH": 1.0 }
+  "goal": [
+    6,
+    1
+  ],
+  "fixedOccluders": [
+    {
+      "shape": "bar",
+      "role": "floor",
+      "size": [
+        6,
+        0.6,
+        1
+      ],
+      "pos": [
+        4.8996664163439725,
+        8.975559047643696,
+        6
+      ],
+      "rot": [
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "shape": "bar",
+      "role": "floor",
+      "size": [
+        6,
+        0.6,
+        1
+      ],
+      "pos": [
+        10.423279848486885,
+        8.967429999952776,
+        6
+      ],
+      "rot": [
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "movableOccluders": [
+    {
+      "shape": "crescent",
+      "role": "floor",
+      "size": [
+        6,
+        2.5,
+        1
+      ],
+      "spawn": [
+        9,
+        7,
+        6
+      ],
+      "allow": {
+        "translate": true,
+        "rotate": true
+      }
+    }
+  ],
+  "params": {
+    "carSpeed": 6,
+    "gravity": 9.8,
+    "maxClimbDeg": 35,
+    "gapPassRatio": 0.8,
+    "goalHW": 0.9,
+    "goalHH": 1
+  }
 }
