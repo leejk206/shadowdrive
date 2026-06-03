@@ -12,6 +12,7 @@
                  background: rgba(40,30,24,0.7); color: #ffd9a0;
                  border: 1px solid rgba(255,178,77,0.4); border-radius: 5px; }
     #ui button:hover { background: rgba(60,44,34,0.9); }
+    #ui button.active { background: rgba(255,178,77,0.28); border-color: rgba(255,178,77,0.8); color: #fff0d8; }
     #levelLabel { font-weight: 600; color: #ffd9a0; }
     #phase { font-weight: 700; letter-spacing: 0.5px; color: #ffd9a0; }
     #hint { color: #b8a890; opacity: 0.8; font-size: 12px; }
@@ -96,10 +97,11 @@
     <button id="go">Go</button>
     <button id="reset">Reset</button>
     <button id="edit">Edit</button>
+    <button id="hideObj" title="물체 본체를 숨겨 그림자(도로)만 미리봅니다 (단축키 h)">👁 물체 숨김</button>
     <button id="exportBtn" style="display:none">Export</button>
     <span id="levelLabel"></span>
     <span id="phase"></span>
-    <span id="hint">drag: rotate obj · shift+drag: move · right-drag: orbit cam · wheel: zoom · space: Go/Test · r: reset · e: edit · 1-9: level</span>
+    <span id="hint">drag: rotate obj · shift+drag: move · right-drag: orbit cam · wheel: zoom · space: Go/Test · r: reset · e: edit · h: 물체 숨김 · 1-9: level</span>
   </div>
   <div id="editorPanel"></div>
   <div id="tutorial">

@@ -14,6 +14,7 @@ const ui = {
   go: document.getElementById('go'),
   reset: document.getElementById('reset'),
   edit: document.getElementById('edit'),
+  hideObj: document.getElementById('hideObj'),
   export: document.getElementById('exportBtn'),
   level: document.getElementById('levelLabel'),
   hint: document.getElementById('hint'),
@@ -64,6 +65,21 @@ let currentLevelObj = null;   // 현재 idx로 로드된 레벨 원본(에디터
 let mode = 'play';            // 'play' | 'edit'
 let testing = false;          // edit 모드에서 Test 시뮬레이션 진행 중
 let anim = null;
+let bodiesHidden = false;     // 본체 숨김 토글(그림자=도로만 미리보기). play 모드 전용.
+
+// 본체 숨김 상태 적용 + 버튼 라벨/활성 갱신. (그림자는 유지, 본체만 opacity 0)
+function setBodiesHidden(v) {
+  bodiesHidden = v;
+  renderer.setOccluderBodiesVisible(!v);
+  if (ui.hideObj) {
+    ui.hideObj.textContent = v ? '👁 물체 표시' : '👁 물체 숨김';
+    ui.hideObj.classList.toggle('active', v);
+  }
+}
+function toggleHideBodies() {
+  if (mode !== 'play') return;  // 에디터에선 물체를 봐야 하므로 비활성
+  setBodiesHidden(!bodiesHidden);
+}
 
 // draft 우선, 없으면 파일에서 레벨 로드.
 async function loadById(id) {
@@ -97,6 +113,7 @@ async function startLevel(idx) {
   ui.level.textContent = `Level ${LEVELS[idx]}${draftMark}`;
   ui.banner.style.display = 'none';
   setPhase('PLAN', '#ffd9a0');
+  setBodiesHidden(false);     // 새 레벨은 항상 본체 보이게 시작
   syncScene();
   initTutorial(LEVELS[idx]);
 }
@@ -122,6 +139,8 @@ function syncScene() {
   const hf = sm.recompute();
   renderer.renderHeightfield(hf);
   renderer.setCar(sm.level.start[0], sm.level.start[1]);
+  // renderOccluders가 메시를 새로 만들며 본체를 다시 보이게 하므로, 숨김 토글이 켜져 있으면 재적용.
+  if (bodiesHidden) renderer.setOccluderBodiesVisible(false);
 }
 
 // ── Edit 모드 ───────────────────────────────────────────────────────────
@@ -131,6 +150,7 @@ function enterEdit() {
   cancelAnim();
   clearCountdown();
   tutHide();
+  setBodiesHidden(false);     // 편집은 물체를 봐야 하므로 숨김 해제
   if (!editor) {
     editor = new LevelEditor(renderer, {
       manifestIds: MANIFEST,
@@ -307,6 +327,7 @@ async function main() {
   ui.go.addEventListener('click', onGoButton);
   ui.reset.addEventListener('click', onResetButton);
   if (ui.edit) ui.edit.addEventListener('click', toggleEdit);
+  if (ui.hideObj) ui.hideObj.addEventListener('click', toggleHideBodies);
   if (ui.export) ui.export.addEventListener('click', () => { if (editor) editor._export(); });
   if (ui.tutNext) ui.tutNext.addEventListener('click', tutAdvance);
   if (ui.tutSkip) ui.tutSkip.addEventListener('click', () => { if (tutId) tutShown.add(tutId); tutHide(); });
@@ -316,6 +337,7 @@ async function main() {
     if (e.key === ' ') onGoButton();
     if (e.key === 'r') onResetButton();
     if (e.key === 'e') toggleEdit();
+    if (e.key === 'h') toggleHideBodies();
     if (mode === 'play') {
       const n = parseInt(e.key, 10);
       if (n >= 1 && n <= LEVELS.length) { levelIdx = n - 1; startLevel(levelIdx); }
