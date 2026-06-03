@@ -508,27 +508,51 @@ export class Renderer {
     this.controls.mouseButtons.RIGHT = on ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
   }
 
-  // 그림자 금지 구역(데드존): z=1 평면의 밝게 씻긴 반투명 사각형 + 윤곽. 거긴 도로가 안 생긴다.
+  // 그림자 금지 구역(데드존): 그 영역의 그림자를 '빛 범람'으로 덮어 가린다(불투명 밝은 패널).
+  // 패널은 벽면 바로 앞(z≈0.012, 차/마커 z=0.03보다 뒤)이라 벽 그림자는 가리되 차는 가리지 않는다.
+  // (충돌은 x,y 사각으로 따로 처리 — 오클루더 z≥2와 무관.)
   renderZones(zones) {
     this.zoneGroup.clear();
     for (const z of (zones || [])) {
       const w = Math.abs(z.x1 - z.x0), h = Math.abs(z.y1 - z.y0);
       const cx = (z.x0 + z.x1) / 2, cy = (z.y0 + z.y1) / 2;
       if (w <= 0 || h <= 0) continue;
+      // 그림자를 가리는 밝은 패널(불투명) → 거긴 그림자가 안 보인다.
       const fill = new THREE.Mesh(
         new THREE.PlaneGeometry(w, h),
-        new THREE.MeshBasicMaterial({ color: 0xfff2cc, transparent: true, opacity: 0.16, depthWrite: false })
+        new THREE.MeshBasicMaterial({ color: 0xe9d4a6 })
       );
-      fill.position.set(cx, cy, 1);   // z=1: 벽 그림자 앞, 오클루더(z≥2) 뒤
-      fill.renderOrder = 5;
+      fill.position.set(cx, cy, 0.012);
+      fill.renderOrder = 2;
       this.zoneGroup.add(fill);
+      // 윤곽
       const edge = new THREE.LineSegments(
         new THREE.EdgesGeometry(new THREE.PlaneGeometry(w, h)),
-        new THREE.LineBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.5 })
+        new THREE.LineBasicMaterial({ color: 0xb58a3c })
       );
-      edge.position.set(cx, cy, 1.001);
-      edge.renderOrder = 6;
+      edge.position.set(cx, cy, 0.016);
+      edge.renderOrder = 3;
       this.zoneGroup.add(edge);
+      // 라벨 — "그림자 생성 금지" (넓은 캔버스에 전체 문구). 좁은 구역이면 축소.
+      const c = document.createElement('canvas');
+      c.width = 512; c.height = 80;
+      const ctx = c.getContext('2d');
+      ctx.font = 'bold 44px system-ui, sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.lineWidth = 7; ctx.strokeStyle = 'rgba(255,246,226,0.9)';
+      ctx.strokeText('그림자 생성 금지', 256, 42);
+      ctx.fillStyle = '#6e4f18'; ctx.fillText('그림자 생성 금지', 256, 42);
+      const tex = new THREE.CanvasTexture(c);
+      tex.minFilter = THREE.LinearFilter; tex.colorSpace = THREE.SRGBColorSpace;
+      const lbl = new THREE.Mesh(
+        new THREE.PlaneGeometry(3.2, 0.5),
+        new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false })
+      );
+      lbl.renderOrder = 7;
+      const s = Math.max(0.4, Math.min(1, w / 3.4));
+      lbl.scale.set(s, s, 1);
+      lbl.position.set(cx, cy, 0.02);
+      this.zoneGroup.add(lbl);
     }
     this.render();
   }
