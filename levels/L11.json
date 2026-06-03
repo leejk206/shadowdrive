@@ -1,15 +1,111 @@
 {
   "id": "L11",
-  "light": { "type": "point", "vec": [9, 11, 14] },
-  "wall": { "width": 18, "height": 10 },
-  "start": [2, 7],
-  "goal": [15, 1],
-  "fixedOccluders": [],
-  "movableOccluders": [
-    { "shape": "bar", "role": "floor", "size": [6, 0.6, 1], "spawn": [6, 6, 6],
-      "allow": { "translate": true, "rotate": true } },
-    { "shape": "bar", "role": "floor", "size": [6, 0.6, 1], "spawn": [12, 6, 6],
-      "allow": { "translate": true, "rotate": true } }
+  "light": {
+    "type": "point",
+    "vec": [
+      9,
+      11,
+      14
+    ]
+  },
+  "wall": {
+    "width": 18,
+    "height": 10
+  },
+  "start": [
+    2,
+    11
   ],
-  "params": { "carSpeed": 6, "gravity": 9.8, "maxClimbDeg": 35, "gapPassRatio": 0.8, "goalHW": 0.9, "goalHH": 1.0 }
+  "goal": [
+    19,
+    6
+  ],
+  "fixedOccluders": [
+    {
+      "shape": "bar",
+      "role": "floor",
+      "size": [
+        6,
+        0.6,
+        1
+      ],
+      "pos": [
+        17.483158748459314,
+        7.017550619167427,
+        6
+      ],
+      "rot": [
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "movableOccluders": [
+    {
+      "shape": "crescent",
+      "role": "floor",
+      "size": [
+        6,
+        2.5,
+        1
+      ],
+      "spawn": [
+        9.263025231813057,
+        10.690694770611206,
+        6
+      ],
+      "rot": [
+        0.6698884814213346,
+        0.03040815273303271,
+        -0.02672097042488525,
+        0.7413573743114285
+      ],
+      "allow": {
+        "translate": true,
+        "rotate": true
+      }
+    },
+    {
+      "shape": "bar",
+      "role": "floor",
+      "size": [
+        5,
+        0.4,
+        1
+      ],
+      "spawn": [
+        8.889142916580985,
+        5.817957313454857,
+        6
+      ],
+      "rot": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "allow": {
+        "translate": true,
+        "rotate": true
+      }
+    }
+  ],
+  "noShadowZones": [
+    {
+      "x0": 15,
+      "x1": 18,
+      "y0": -3,
+      "y1": 13
+    }
+  ],
+  "params": {
+    "carSpeed": 6,
+    "gravity": 9.8,
+    "maxClimbDeg": 35,
+    "gapPassRatio": 0.8,
+    "goalHW": 0.9,
+    "goalHH": 1
+  }
 }
