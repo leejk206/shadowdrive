@@ -1,10 +1,7 @@
 // src/core/GameStateMachine.js
 import { projectScene } from './ShadowProjector.js';
-import { buildHeightfield } from './ColliderBuilder.js';
-import { simulate } from './CarSimulator.js';
+import { simulateVehicle } from './VehicleSimulator.js';
 import { expandCompound, transformVerts, composeRotZ } from './shapes.js';
-
-const SAMPLES = 200;
 
 export class GameStateMachine {
   constructor(level) {
@@ -52,24 +49,10 @@ export class GameStateMachine {
     return fixed.concat(mov);
   }
 
-  _pads() {
-    // iteration-3: start 발판 제거(차는 공중 발사대에서 그림자로 낙하). goal 패드만 유지.
-    const [gx, gy] = this.level.goal;
-    const w = 0.8; // 패드 폭
-    return [
-      { x0: gx - w / 2, x1: gx + w / 2, y: gy },
-    ];
-  }
-
-  /** PLAN 미리보기용 heightfield 계산 */
+  /** 현재 씬의 고체 콜라이더(그림자 convex 폴리곤 배열). PLAN 미리보기 + GO 양쪽에 사용.
+   *  2D 차량 물리는 모든 그림자를 고체로 취급한다(role 무시). */
   recompute() {
-    // iteration-3: start 도로 마스킹 제거. 차는 start_x 아래에 만든 그림자 도로에 낙하·접지해야
-    // 출발할 수 있으므로(추력은 접지 시에만), 그 영역에 도로 형성을 막으면 안 된다.
-    const polys = projectScene(this._occluders(), this.level.light);
-    return buildHeightfield({
-      polygons: polys, pads: this._pads(),
-      xMin: 0, xMax: this.level.wall.width, samples: SAMPLES,
-    });
+    return projectScene(this._occluders(), this.level.light).map((s) => s.polygon);
   }
 
   /** 가동 오클루더 i의 변환 갱신 (PLAN 단계에서만) */
@@ -112,14 +95,14 @@ export class GameStateMachine {
   go() {
     if (this.phase !== 'PLAN') return null;
     this.phase = 'GO';
-    this.frozen = this.recompute();
+    this.frozen = this.recompute();          // 콜라이더 폴리곤 freeze
     const [sx, sy] = this.level.start;
     const [gx, gy] = this.level.goal;
     const p = this.level.params || {};
-    const goalHW = p.goalHW != null ? p.goalHW : 0.6;
+    const goalHW = p.goalHW != null ? p.goalHW : 0.8;
     const goalHH = p.goalHH != null ? p.goalHH : 0.8;
-    const res = simulate(this.frozen, this.level.params, {
-      length: 1, height: 0.5, startX: sx, startY: sy, goalX: gx, goalY: gy, goalHW, goalHH,
+    const res = simulateVehicle(this.frozen, p, {
+      startX: sx, startY: sy, goal: { x: gx, y: gy, hw: goalHW, hh: goalHH },
     });
     this.phase = res.result; // 'CLEAR' | 'FAIL'
     this.lastResult = res;

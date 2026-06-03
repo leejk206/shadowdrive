@@ -21,10 +21,11 @@ test('초기 상태는 PLAN', () => {
   assert.equal(sm.phase, 'PLAN');
 });
 
-test('recompute는 PLAN 단계 heightfield 미리보기를 만든다', () => {
+test('recompute는 현재 씬의 고체 콜라이더 폴리곤 배열을 만든다', () => {
   const sm = new GameStateMachine(level);
-  const hf = sm.recompute();
-  assert.ok(hf.floor.some((v) => v !== null));
+  const colliders = sm.recompute();
+  assert.ok(Array.isArray(colliders) && colliders.length >= 1);
+  assert.ok(Array.isArray(colliders[0]) && colliders[0].length >= 3); // convex 폴리곤
 });
 
 test('go(): 막대 그림자가 길을 메우면 CLEAR로 전이', () => {
