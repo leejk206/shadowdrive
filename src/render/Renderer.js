@@ -533,26 +533,6 @@ export class Renderer {
       edge.position.set(cx, cy, 0.016);
       edge.renderOrder = 3;
       this.zoneGroup.add(edge);
-      // 라벨 — "그림자 생성 금지" (넓은 캔버스에 전체 문구). 좁은 구역이면 축소.
-      const c = document.createElement('canvas');
-      c.width = 512; c.height = 80;
-      const ctx = c.getContext('2d');
-      ctx.font = 'bold 44px system-ui, sans-serif';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.lineWidth = 7; ctx.strokeStyle = 'rgba(255,246,226,0.9)';
-      ctx.strokeText('그림자 생성 금지', 256, 42);
-      ctx.fillStyle = '#6e4f18'; ctx.fillText('그림자 생성 금지', 256, 42);
-      const tex = new THREE.CanvasTexture(c);
-      tex.minFilter = THREE.LinearFilter; tex.colorSpace = THREE.SRGBColorSpace;
-      const lbl = new THREE.Mesh(
-        new THREE.PlaneGeometry(3.2, 0.5),
-        new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false })
-      );
-      lbl.renderOrder = 7;
-      const s = Math.max(0.4, Math.min(1, w / 3.4));
-      lbl.scale.set(s, s, 1);
-      lbl.position.set(cx, cy, 0.02);
-      this.zoneGroup.add(lbl);
     }
     this.render();
   }
