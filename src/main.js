@@ -15,6 +15,7 @@ const ui = {
   reset: document.getElementById('reset'),
   edit: document.getElementById('edit'),
   hideObj: document.getElementById('hideObj'),
+  stageTimer: document.getElementById('stageTimer'),
   export: document.getElementById('exportBtn'),
   level: document.getElementById('levelLabel'),
   hint: document.getElementById('hint'),
@@ -67,6 +68,39 @@ let testing = false;          // edit 모드에서 Test 시뮬레이션 진행 �
 let anim = null;
 let bodiesHidden = false;     // 본체 숨김 토글(그림자=도로만 미리보기). play 모드 전용.
 
+// ── 스테이지 30초 타이머(play 모드 전용) ─────────────────────────────────
+// PLAN 진입(레벨 로드/리셋) 시 30s 시작 → PLAN·GO 통틀어 실시간 감소.
+// CLEAR면 정지, 0이면 '시간 초과' FAIL. 에디터 모드 비활성. (UI 레이어라 performance.now 사용)
+const STAGE_SECONDS = 30;
+let stageActive = false, stageDeadline = 0;
+function startStageTimer() {
+  stageActive = true;
+  stageDeadline = performance.now() + STAGE_SECONDS * 1000;
+  if (ui.stageTimer) ui.stageTimer.style.display = 'block';
+}
+function stopStageTimer() {
+  stageActive = false;
+  if (ui.stageTimer) ui.stageTimer.style.display = 'none';
+}
+function updateStageTimer() {
+  if (!stageActive || mode !== 'play') return;
+  const rem = (stageDeadline - performance.now()) / 1000;
+  if (ui.stageTimer) {
+    ui.stageTimer.textContent = `⏱ ${Math.max(0, rem).toFixed(1)}`;
+    ui.stageTimer.classList.toggle('danger', rem < 5);
+  }
+  if (rem <= 0) onStageTimeout();
+}
+function onStageTimeout() {
+  stopStageTimer();
+  cancelAnim();
+  clearCountdown();
+  if (sm) sm.phase = 'FAIL';
+  renderer.setOccluderBodiesVisible(true);
+  setPhase('시간 초과 ✗', '#f55');
+  showBanner('시간 초과 ✗', false);
+}
+
 // 본체 숨김 상태 적용 + 버튼 라벨/활성 갱신. (그림자는 유지, 본체만 opacity 0)
 function setBodiesHidden(v) {
   bodiesHidden = v;
@@ -115,6 +149,7 @@ async function startLevel(idx) {
   setPhase('PLAN', '#ffd9a0');
   setBodiesHidden(false);     // 새 레벨은 항상 본체 보이게 시작
   syncScene();
+  startStageTimer();          // 스테이지 30초 시작
   initTutorial(LEVELS[idx]);
 }
 
@@ -150,6 +185,7 @@ function enterEdit() {
   cancelAnim();
   clearCountdown();
   tutHide();
+  stopStageTimer();           // 에디터 모드에선 타이머 비활성
   setBodiesHidden(false);     // 편집은 물체를 봐야 하므로 숨김 해제
   if (!editor) {
     editor = new LevelEditor(renderer, {
@@ -225,6 +261,7 @@ function onGo() {
     renderer.setOccluderBodiesVisible(false);
     animateCar(res, () => {
       const ok = res.result === 'CLEAR';
+      if (ok) stopStageTimer();    // 성공 시 타이머 정지
       setPhase(ok ? 'CLEAR ✓' : 'FAIL ✗', ok ? '#5f5' : '#f55');
       showBanner(ok ? 'CLEAR ✓' : 'FAIL ✗', ok);
       // edit 모드 Test에서는 다음 레벨로 넘어가지 않는다(Reset으로 편집 복귀).
@@ -263,6 +300,7 @@ function onReset() {
   ui.banner.style.display = 'none';
   setPhase('PLAN', '#ffd9a0');
   syncScene();
+  startStageTimer();          // 리셋 = 시도당 30초 재시작
 }
 
 function animateCar(res, done) {
@@ -290,6 +328,7 @@ function showBanner(text, ok) {
 
 function loop() {
   renderer.controls.update();
+  updateStageTimer();
   renderer.render();
   requestAnimationFrame(loop);
 }

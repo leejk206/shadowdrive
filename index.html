@@ -14,6 +14,11 @@
     #ui button:hover { background: rgba(60,44,34,0.9); }
     #ui button.active { background: rgba(255,178,77,0.28); border-color: rgba(255,178,77,0.8); color: #fff0d8; }
     #levelLabel { font-weight: 600; color: #ffd9a0; }
+    #stageTimer { position: fixed; top: 7px; left: 50%; transform: translateX(-50%); z-index: 20;
+                  display: none; font: 600 13px/1 system-ui, sans-serif; font-variant-numeric: tabular-nums;
+                  color: #ffd9a0; background: rgba(22,16,12,0.55); padding: 3px 10px; border-radius: 10px;
+                  letter-spacing: 0.5px; pointer-events: none; }
+    #stageTimer.danger { color: #ff6f5e; background: rgba(60,18,14,0.6); }
     #phase { font-weight: 700; letter-spacing: 0.5px; color: #ffd9a0; }
     #hint { color: #b8a890; opacity: 0.8; font-size: 12px; }
     #banner { position: fixed; left: 50%; top: 38%; transform: translateX(-50%);
@@ -103,6 +108,7 @@
     <span id="phase"></span>
     <span id="hint">drag: rotate obj · shift+drag: move · right-drag: orbit cam · wheel: zoom · space: Go/Test · r: reset · e: edit · h: 물체 숨김 · 1-9: level</span>
   </div>
+  <div id="stageTimer"></div>
   <div id="editorPanel"></div>
   <div id="tutorial">
     <div class="tut-step" id="tutStep"></div>
