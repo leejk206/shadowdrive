@@ -30,7 +30,7 @@ export class Renderer {
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.08;
-    this.controls.enablePan = false;
+    this.controls.enablePan = true;   // Shift+우드래그 = 팬(setPanDrag로 RIGHT 버튼 전환)
     this.controls.mouseButtons = { LEFT: null, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
     this.controls.touches = { ONE: null, TWO: THREE.TOUCH.DOLLY_ROTATE };
     // 카메라가 벽 뒤로 넘어가지 못하게 궤도를 벽 앞 반구로 제한.
@@ -488,6 +488,23 @@ export class Renderer {
     this.car.position.set(x, y, 0.03);
     this.car.rotation.z = angle;
     this.car.visible = true;
+  }
+
+  // WASD 카메라 이동: 궤도 타깃째로 수평 평행이동(strafe=우+/좌-, forward=전+/후-).
+  moveCamera(strafe, forward) {
+    const fwd = new THREE.Vector3().subVectors(this.controls.target, this.camera.position);
+    fwd.y = 0;
+    if (fwd.lengthSq() < 1e-9) return;
+    fwd.normalize();
+    const right = new THREE.Vector3(-fwd.z, 0, fwd.x);
+    const move = new THREE.Vector3().addScaledVector(right, strafe).addScaledVector(fwd, forward);
+    this.camera.position.add(move);
+    this.controls.target.add(move);
+  }
+
+  // Shift 누름 동안 우드래그를 회전→팬으로 전환(OrbitControls 내장 팬 사용).
+  setPanDrag(on) {
+    this.controls.mouseButtons.RIGHT = on ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
   }
 
   render() { this.renderer.render(this.scene, this.camera); }

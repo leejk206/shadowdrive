@@ -68,6 +68,7 @@ let currentLevelObj = null;   // 현재 idx로 로드된 레벨 원본(에디터
 let mode = 'play';            // 'play' | 'edit'
 let testing = false;          // edit 모드에서 Test 시뮬레이션 진행 중
 let anim = null;
+const heldMove = new Set();   // 눌려있는 WASD 키(카메라 이동). 매 프레임 적용.
 let bodiesHidden = false;     // 본체 숨김 토글(그림자=도로만 미리보기). play 모드 전용.
 
 // ── 스테이지 30초 타이머(play 모드 전용) ─────────────────────────────────
@@ -336,9 +337,21 @@ function showBanner(text, ok) {
   ui.banner.style.display = 'block';
 }
 
+function applyCameraMove() {
+  if (!heldMove.size) return;
+  const sp = 0.16; // 프레임당 이동량
+  let strafe = 0, fwd = 0;
+  if (heldMove.has('d')) strafe += sp;
+  if (heldMove.has('a')) strafe -= sp;
+  if (heldMove.has('w')) fwd += sp;
+  if (heldMove.has('s')) fwd -= sp;
+  if (strafe || fwd) renderer.moveCamera(strafe, fwd);
+}
+
 function loop() {
   renderer.controls.update();
   updateStageTimer();
+  applyCameraMove();
   renderer.render();
   requestAnimationFrame(loop);
 }
@@ -378,6 +391,9 @@ async function main() {
 
   window.addEventListener('keydown', (e) => {
     if (e.target && /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return; // 폼 입력 중 단축키 무시
+    if (e.key === 'Shift') renderer.setPanDrag(true);   // Shift+우드래그 = 카메라 팬
+    const mk = e.key.length === 1 ? e.key.toLowerCase() : '';
+    if (mk === 'w' || mk === 'a' || mk === 's' || mk === 'd') heldMove.add(mk); // WASD 카메라 이동
     if (e.key === ' ') onGoButton();
     if (e.key === 'r') onResetButton();
     if (e.key === 'e') toggleEdit();
@@ -387,6 +403,12 @@ async function main() {
       else if (e.key === 'ArrowLeft') { e.preventDefault(); gotoLevel(levelIdx - 1); }
     }
   });
+  window.addEventListener('keyup', (e) => {
+    if (e.key === 'Shift') renderer.setPanDrag(false);
+    const mk = e.key.length === 1 ? e.key.toLowerCase() : '';
+    if (mk) heldMove.delete(mk);
+  });
+  window.addEventListener('blur', () => { heldMove.clear(); renderer.setPanDrag(false); }); // 포커스 잃으면 키 고착 방지
 
   startLevel(levelIdx).then(loop);
 }
