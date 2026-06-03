@@ -103,6 +103,7 @@ export class GameStateMachine {
     const goalHH = p.goalHH != null ? p.goalHH : 0.8;
     const res = simulateVehicle(this.frozen, p, {
       startX: sx, startY: sy, goal: { x: gx, y: gy, hw: goalHW, hh: goalHH },
+      noShadowZones: this.level.noShadowZones || [],
     });
     this.phase = res.result; // 'CLEAR' | 'FAIL'
     this.lastResult = res;

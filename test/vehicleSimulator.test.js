@@ -53,3 +53,18 @@ test('목표 위 스폰 + 평지: 바로 CLEAR', () => {
   const r = simulateVehicle(ground, P, veh({ startX: 11, goal: { x: 12, y: 1, hw: 2, hh: 2 } }));
   assert.equal(r.result, 'CLEAR');
 });
+
+test('그림자 금지 구역: 평지 위 데드존이 도로를 지워 차가 추락 → FAIL', () => {
+  const ground = [sq(0, 0, 16, 0.5)];
+  // 넓은 세로 데드존 x[6,13] 전 높이 → 그 구간 도로 사라짐 → 코스트로 못 건너 추락
+  const r = simulateVehicle(ground, P, veh({ noShadowZones: [{ x0: 6, x1: 13, y0: -1, y1: 9 }] }));
+  assert.equal(r.result, 'FAIL');
+  assert.equal(r.reason, 'fell');
+});
+
+test('그림자 금지 구역: 도로보다 높은 데드존은 주행에 영향 없음 → CLEAR', () => {
+  const ground = [sq(0, 0, 16, 0.5)];
+  // 데드존이 도로(y~0.5) 위(y 3~9)만 가림 → 바닥 도로는 멀쩡 → 통과
+  const r = simulateVehicle(ground, P, veh({ noShadowZones: [{ x0: 7, x1: 9, y0: 3, y1: 9 }] }));
+  assert.equal(r.result, 'CLEAR');
+});

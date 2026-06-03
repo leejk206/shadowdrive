@@ -43,6 +43,9 @@ export function simulateVehicle(colliders, params, vehicle) {
   const failY = vehicle.failY != null ? vehicle.failY : minY - 6;
 
   const goal = vehicle.goal;
+  // 그림자 금지 구역(고정 데드존, 축정렬 사각형). 그 안의 접촉=도로는 무시(=도로 없음).
+  const zones = vehicle.noShadowZones || [];
+  const inZone = (px, py) => zones.some((z) => px >= z.x0 && px <= z.x1 && py >= z.y0 && py <= z.y1);
   // 상태
   let x = vehicle.startX, y = vehicle.startY, ang = 0;
   let vx = 0, vy = 0, w = 0;
@@ -81,6 +84,7 @@ export function simulateVehicle(colliders, params, vehicle) {
         }
         if (!best) continue;
         const { nx, ny, depth, px, py } = best;
+        if (inZone(px, py)) continue;             // 데드존 안 = 도로 없음 → 지지 무시
         // 바퀴 접촉점 속도 = v + w×r
         const rxw = px - x, ryw = py - y;
         const pvx = vx - w * ryw, pvy = vy + w * rxw;
@@ -110,10 +114,11 @@ export function simulateVehicle(colliders, params, vehicle) {
         const hit = convexVsConvex(corners, poly);
         if (!hit) continue;
         const { nx, ny, depth } = hit;
-        x += nx * depth * WALL_BAUMGARTE; y += ny * depth * WALL_BAUMGARTE;
-        // 가장 깊이 박힌 코너에서 임펄스(토크 유발 → 전복)
+        // 가장 깊이 박힌 코너(접촉점). 데드존 안이면 도로 없음 → 충돌 무시.
         let deep = corners[0], md = Infinity;
         for (const c of corners) { const d = (c[0] - x) * nx + (c[1] - y) * ny; if (d < md) { md = d; deep = c; } }
+        if (inZone(deep[0], deep[1])) continue;
+        x += nx * depth * WALL_BAUMGARTE; y += ny * depth * WALL_BAUMGARTE;
         const rxc = deep[0] - x, ryc = deep[1] - y;
         const pvx = vx - w * ryc, pvy = vy + w * rxc;
         const vn = pvx * nx + pvy * ny;
