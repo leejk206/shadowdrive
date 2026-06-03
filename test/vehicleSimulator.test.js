@@ -62,6 +62,16 @@ test('그림자 금지 구역: 평지 위 데드존이 도로를 지워 차가 �
   assert.equal(r.reason, 'fell');
 });
 
+test('드롭다운 점프: 높은 도로에서 한참 낮은 goal로 떨어져 골인 (추락선이 goal 위로 오면 안 됨)', () => {
+  // 높은 도로(y~9) 끝에서 낮은 goal(y1, 옛 failY=3보다 아래)로 낙하.
+  // goal 박스를 넓게(x) 낮게(y) 둬서 떨어지는 포물선이 통과. 옛 failY면 goal 전에 fell → 회귀.
+  const colliders = [sq(0, 8.5, 9, 9)];
+  const r = simulateVehicle(colliders, P, veh({
+    startX: 2, startY: 11, goal: { x: 15, y: 1, hw: 3, hh: 1 },
+  }));
+  assert.equal(r.result, 'CLEAR');
+});
+
 test('그림자 금지 구역: 도로보다 높은 데드존은 주행에 영향 없음 → CLEAR', () => {
   const ground = [sq(0, 0, 16, 0.5)];
   // 데드존이 도로(y~0.5) 위(y 3~9)만 가림 → 바닥 도로는 멀쩡 → 통과

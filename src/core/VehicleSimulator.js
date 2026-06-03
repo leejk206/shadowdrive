@@ -40,7 +40,10 @@ export function simulateVehicle(colliders, params, vehicle) {
   let minY = Infinity;
   for (const poly of colliders) for (const [, y] of poly) if (y < minY) minY = y;
   if (!isFinite(minY)) minY = 0;
-  const failY = vehicle.failY != null ? vehicle.failY : minY - 6;
+  // 추락선: 최저 도로 OR goal 둘 중 더 아래에서 6 더 아래. (goal이 도로보다 한참 낮은
+  // '드롭다운 점프'에서 추락선이 goal 위로 와 골인 직전 'fell'로 죽는 것 방지)
+  const failY = vehicle.failY != null ? vehicle.failY
+    : Math.min(minY, vehicle.goal ? vehicle.goal.y : minY) - 6;
 
   const goal = vehicle.goal;
   // 그림자 금지 구역(고정 데드존, 축정렬 사각형). 그 안의 접촉=도로는 무시(=도로 없음).
