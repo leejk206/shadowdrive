@@ -28,6 +28,14 @@ export function validateLevel(lv) {
   const p = lv.params || {};
   for (const k of ['carSpeed', 'gravity', 'maxClimbDeg', 'gapPassRatio'])
     if (typeof p[k] !== 'number') e.push(`params.${k} required`);
+  // 선택: 그림자 금지 구역(고정 데드존, 축정렬 사각형)
+  if (lv.noShadowZones !== undefined) {
+    if (!Array.isArray(lv.noShadowZones)) e.push('noShadowZones must be array');
+    else lv.noShadowZones.forEach((z, i) => {
+      for (const k of ['x0', 'x1', 'y0', 'y1'])
+        if (typeof (z && z[k]) !== 'number') e.push(`noShadowZones[${i}].${k} required`);
+    });
+  }
   return { ok: e.length === 0, errors: e };
 }
 

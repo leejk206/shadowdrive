@@ -17,6 +17,7 @@ export function itemsFromLevel(level) {
     wall: { width: level.wall.width, height: level.wall.height },
     start: level.start.slice(),
     goal: level.goal.slice(),
+    noShadowZones: (level.noShadowZones || []).map((z) => ({ x0: z.x0, x1: z.x1, y0: z.y0, y1: z.y1 })),
     params: { ...level.params },
   };
   const mk = (o, fixed) => ({
@@ -63,7 +64,7 @@ export function levelFromItems(globals, items) {
       movable.push(o);
     }
   }
-  return {
+  const out = {
     id: globals.id,
     light: { type: globals.light.type, vec: globals.light.vec.slice() },
     wall: { width: globals.wall.width, height: globals.wall.height },
@@ -71,8 +72,11 @@ export function levelFromItems(globals, items) {
     goal: globals.goal.slice(),
     fixedOccluders: fixed,
     movableOccluders: movable,
-    params: { ...globals.params },
   };
+  const zones = (globals.noShadowZones || []).filter((z) => z && Math.abs(z.x1 - z.x0) > 0 && Math.abs(z.y1 - z.y0) > 0);
+  if (zones.length) out.noShadowZones = zones.map((z) => ({ x0: z.x0, x1: z.x1, y0: z.y0, y1: z.y1 }));
+  out.params = { ...globals.params };
+  return out;
 }
 
 /** 빈 레벨 한 장 생성(New). */

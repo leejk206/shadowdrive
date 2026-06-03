@@ -119,6 +119,7 @@ export class LevelEditor {
     const gHW = this.globals.params.goalHW != null ? this.globals.params.goalHW : 0.6;
     const gHH = this.globals.params.goalHH != null ? this.globals.params.goalHH : 0.8;
     this.renderer.renderPads(this.globals.start, this.globals.goal, gHW, gHH);
+    this.renderer.renderZones(this.globals.noShadowZones || []);
     this.renderer.setCar(this.globals.start[0], this.globals.start[1]);
     this._highlightSelected();
     this._renderPanel();
@@ -184,6 +185,17 @@ export class LevelEditor {
         <button class="ed-del" data-i="${i}">✕</button></div>`;
     });
 
+    // 그림자 금지 구역(고정 데드존, z=1). x0/x1/y0/y1 직사각.
+    const zones = g.noShadowZones || [];
+    html += `<div class="ed-sec">그림자 금지 구역 (${zones.length})</div>`;
+    html += `<div class="ed-row"><button class="ed-btn ed-zone-add">+ 구역 추가</button></div>`;
+    zones.forEach((z, i) => {
+      const zn = (key, val) => `<input class="ed-in" data-scope="g" data-path="noShadowZones.${i}.${key}" type="number" step="any" value="${val}">`;
+      html += `<div class="ed-row"><span class="ed-lab">#${i} x</span>${zn('x0', z.x0)}${zn('x1', z.x1)}`
+        + `<span class="ed-lab">y</span>${zn('y0', z.y0)}${zn('y1', z.y1)}`
+        + `<button class="ed-del ed-zone-del" data-zi="${i}">✕</button></div>`;
+    });
+
     // 선택 오클루더 상세
     if (this.selected >= 0 && this.items[this.selected]) {
       const it = this.items[this.selected];
@@ -235,7 +247,14 @@ export class LevelEditor {
     $('.ed-cb').forEach((el) => el.addEventListener('change', (e) => this._onField(e)));
     $('.ed-add').forEach((el) => el.addEventListener('click', () => this._addItem(el.dataset.shape)));
     $('.ed-pick').forEach((el) => el.addEventListener('click', () => this.select(parseInt(el.dataset.i, 10))));
-    $('.ed-del').forEach((el) => el.addEventListener('click', () => this._deleteItem(parseInt(el.dataset.i, 10))));
+    $('.ed-del').forEach((el) => el.addEventListener('click', () => {
+      if (el.dataset.i != null) this._deleteItem(parseInt(el.dataset.i, 10)); // 구역 ✕는 data-i 없음 → 스킵
+    }));
+    $('.ed-zone-add').forEach((el) => el.addEventListener('click', () => this._addZone()));
+    $('.ed-zone-del').forEach((el) => el.addEventListener('click', () => {
+      this.globals.noShadowZones.splice(parseInt(el.dataset.zi, 10), 1);
+      this._rebuildAll(false);
+    }));
     const rotReset = this.panel.querySelector('.ed-rotreset');
     if (rotReset) rotReset.addEventListener('click', () => { this.items[this.selected].rot = 0; this._rebuildAll(false); });
     const nb = this.panel.querySelector('.ed-new');
@@ -273,6 +292,14 @@ export class LevelEditor {
   _addItem(shape) {
     this.items.push(newItem(shape, this.globals));
     this.selected = this.items.length - 1;
+    this._rebuildAll(false);
+  }
+
+  // 기본 세로 데드존(벽 중앙)을 추가. x0/x1/y0/y1은 필드로 편집.
+  _addZone() {
+    if (!this.globals.noShadowZones) this.globals.noShadowZones = [];
+    const w = this.globals.wall.width, h = this.globals.wall.height;
+    this.globals.noShadowZones.push({ x0: +(w / 2 - 1).toFixed(1), x1: +(w / 2 + 1).toFixed(1), y0: 0, y1: h });
     this._rebuildAll(false);
   }
 

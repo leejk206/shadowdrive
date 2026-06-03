@@ -176,6 +176,7 @@ function syncScene() {
   renderer.renderOccluders(occs);
   const hf = sm.recompute();
   renderer.renderHeightfield(hf);
+  renderer.renderZones(sm.level.noShadowZones || []);   // 그림자 금지 구역 표시
   renderer.setCar(sm.level.start[0], sm.level.start[1]);
   // renderOccluders가 메시를 새로 만들며 본체를 다시 보이게 하므로, 숨김 토글이 켜져 있으면 재적용.
   if (bodiesHidden) renderer.setOccluderBodiesVisible(false);

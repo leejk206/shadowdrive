@@ -111,7 +111,8 @@ export class Renderer {
     this.roadGroup = new THREE.Group();      // 빛나는 도로(floor 윤곽)
     this.ceilingGroup = new THREE.Group();   // 옅은 천장 윤곽(옵션)
     this.padGroup = new THREE.Group();
-    this.scene.add(this.occluderGroup, this.roadGroup, this.ceilingGroup, this.padGroup);
+    this.zoneGroup = new THREE.Group();      // 그림자 금지 구역(데드존, z=1 밝은 띠)
+    this.scene.add(this.occluderGroup, this.roadGroup, this.ceilingGroup, this.padGroup, this.zoneGroup);
 
     this.car = this._makeCar();
     this.scene.add(this.car);
@@ -505,6 +506,31 @@ export class Renderer {
   // Shift 누름 동안 우드래그를 회전→팬으로 전환(OrbitControls 내장 팬 사용).
   setPanDrag(on) {
     this.controls.mouseButtons.RIGHT = on ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
+  }
+
+  // 그림자 금지 구역(데드존): z=1 평면의 밝게 씻긴 반투명 사각형 + 윤곽. 거긴 도로가 안 생긴다.
+  renderZones(zones) {
+    this.zoneGroup.clear();
+    for (const z of (zones || [])) {
+      const w = Math.abs(z.x1 - z.x0), h = Math.abs(z.y1 - z.y0);
+      const cx = (z.x0 + z.x1) / 2, cy = (z.y0 + z.y1) / 2;
+      if (w <= 0 || h <= 0) continue;
+      const fill = new THREE.Mesh(
+        new THREE.PlaneGeometry(w, h),
+        new THREE.MeshBasicMaterial({ color: 0xfff2cc, transparent: true, opacity: 0.16, depthWrite: false })
+      );
+      fill.position.set(cx, cy, 1);   // z=1: 벽 그림자 앞, 오클루더(z≥2) 뒤
+      fill.renderOrder = 5;
+      this.zoneGroup.add(fill);
+      const edge = new THREE.LineSegments(
+        new THREE.EdgesGeometry(new THREE.PlaneGeometry(w, h)),
+        new THREE.LineBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.5 })
+      );
+      edge.position.set(cx, cy, 1.001);
+      edge.renderOrder = 6;
+      this.zoneGroup.add(edge);
+    }
+    this.render();
   }
 
   render() { this.renderer.render(this.scene, this.camera); }
