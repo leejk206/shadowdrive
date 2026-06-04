@@ -17,6 +17,7 @@ const ui = {
   mainScreen: document.getElementById('mainScreen'),
   msStart: document.getElementById('msStart'),
   msEdit: document.getElementById('msEdit'),
+  mainBtn: document.getElementById('mainBtn'),
   hideObj: document.getElementById('hideObj'),
   prevLvl: document.getElementById('prevLvl'),
   nextLvl: document.getElementById('nextLvl'),
@@ -229,14 +230,24 @@ function toggleEdit() {
 // ── 메인(타이틀) 화면 ──
 function showMain() { if (ui.mainScreen) ui.mainScreen.style.display = 'flex'; }
 function hideMain() { if (ui.mainScreen) ui.mainScreen.style.display = 'none'; }
-function onMainStart() {            // Start → 1스테이지부터 플레이
+function onMainStart() {            // Start → 1스테이지부터 새로 플레이
   hideMain();
   if (mode === 'edit') exitEdit();
-  gotoLevel(0);
+  levelIdx = 0;
+  startLevel(0);
 }
 function onMainEdit() {             // 메인에서 에디터 진입(인게임 버튼 없음)
   hideMain();
   if (mode !== 'edit') enterEdit();
+}
+function returnToMain() {           // 플레이/에디터 → 메인 화면으로
+  if (mode === 'edit') exitEdit();
+  cancelAnim();
+  clearCountdown();
+  stopStageTimer();
+  tutHide();
+  if (sm && sm.phase !== 'PLAN') sm.reset();
+  showMain();
 }
 
 // edit 모드 Test: items에서 만든 레벨로 새 SM을 돌린다(진짜 fixed/movable 분리).
@@ -400,6 +411,7 @@ async function main() {
   ui.reset.addEventListener('click', onResetButton);
   if (ui.msStart) ui.msStart.addEventListener('click', onMainStart);
   if (ui.msEdit) ui.msEdit.addEventListener('click', onMainEdit);
+  if (ui.mainBtn) ui.mainBtn.addEventListener('click', returnToMain);
   if (ui.hideObj) ui.hideObj.addEventListener('click', toggleHideBodies);
   if (ui.prevLvl) ui.prevLvl.addEventListener('click', () => gotoLevel(levelIdx - 1));
   if (ui.nextLvl) ui.nextLvl.addEventListener('click', () => gotoLevel(levelIdx + 1));
@@ -412,6 +424,7 @@ async function main() {
     if (e.key === 'Shift') renderer.setPanDrag(true);   // Shift+우드래그 = 카메라 팬
     const mk = e.key.length === 1 ? e.key.toLowerCase() : '';
     if (mk === 'w' || mk === 'a' || mk === 's' || mk === 'd') heldMove.add(mk); // WASD 카메라 이동
+    if (e.key === 'Escape') { returnToMain(); return; }   // 메인 화면으로
     if (e.key === ' ') onGoButton();
     if (e.key === 'r') onResetButton();
     if (e.key === 'e') toggleEdit();
