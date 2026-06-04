@@ -1,28 +1,72 @@
 {
   "id": "L14",
-  "light": { "type": "point", "vec": [9, 11, 14] },
-  "wall": { "width": 18, "height": 12 },
-  "start": [-1, 11],
-  "goal": [15, 1],
+  "light": {
+    "type": "point",
+    "vec": [
+      9,
+      11,
+      14
+    ]
+  },
+  "wall": {
+    "width": 18,
+    "height": 12
+  },
+  "start": [
+    -1,
+    11
+  ],
+  "goal": [
+    13,
+    -1
+  ],
   "fixedOccluders": [],
   "movableOccluders": [
     {
       "shape": "L",
       "role": "floor",
-      "size": [5, 3, 1],
-      "spawn": [8.539185584803711, 9.301705961590581, 10],
-      "rot": [
-        0.3693199761087473,
-        -0.13500585163176207,
-        0.19919957330561516,
-        0.8976055399044047
+      "size": [
+        5,
+        3,
+        1
       ],
-      "allow": { "translate": true, "rotate": true }
+      "spawn": [
+        8.643384889146752,
+        10.176443789465523,
+        10
+      ],
+      "rot": [
+        0.003156570516483075,
+        0.998303230173641,
+        0.05402930905898167,
+        -0.021483259763311488
+      ],
+      "allow": {
+        "translate": true,
+        "rotate": true
+      }
     }
   ],
   "noShadowZones": [
-    { "x0": 1, "x1": 5, "y0": -3, "y1": 13 },
-    { "x0": 10, "x1": 14, "y0": -3, "y1": 13 }
+    {
+      "x0": 1,
+      "x1": 5,
+      "y0": -3,
+      "y1": 13
+    },
+    {
+      "x0": 10,
+      "x1": 14,
+      "y0": 0,
+      "y1": 13
+    }
   ],
-  "params": { "carSpeed": 6, "gravity": 9.8, "maxClimbDeg": 35, "gapPassRatio": 0.8, "goalHW": 0.9, "goalHH": 1.0 }
+  "params": {
+    "carSpeed": 6,
+    "gravity": 9.8,
+    "maxClimbDeg": 35,
+    "gapPassRatio": 0.8,
+    "goalHW": 0.9,
+    "goalHH": 1
+  }
 }
