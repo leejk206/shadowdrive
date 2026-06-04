@@ -13,7 +13,10 @@ let MANIFEST = LEVELS.slice();
 const ui = {
   go: document.getElementById('go'),
   reset: document.getElementById('reset'),
-  edit: document.getElementById('edit'),
+  edit: document.getElementById('edit'),     // 인게임 버튼은 제거됨(null) — 'e'키/메인화면으로 진입
+  mainScreen: document.getElementById('mainScreen'),
+  msStart: document.getElementById('msStart'),
+  msEdit: document.getElementById('msEdit'),
   hideObj: document.getElementById('hideObj'),
   prevLvl: document.getElementById('prevLvl'),
   nextLvl: document.getElementById('nextLvl'),
@@ -202,7 +205,7 @@ function enterEdit() {
   editor.enter(currentLevelObj);
   if (interaction) interaction.resetTurn();
   ui.go.textContent = 'Test';
-  ui.edit.textContent = 'Exit';
+  if (ui.edit) ui.edit.textContent = 'Exit';
   if (ui.export) ui.export.style.display = '';
   setPhase('EDIT', '#9fd8ff');
 }
@@ -212,7 +215,7 @@ function exitEdit() {
   testing = false;
   editor.exit();
   ui.go.textContent = 'Go';
-  ui.edit.textContent = 'Edit';
+  if (ui.edit) ui.edit.textContent = 'Edit';
   if (ui.export) ui.export.style.display = 'none';
   refreshLevels();
   startLevel(levelIdx);
@@ -221,6 +224,19 @@ function exitEdit() {
 function toggleEdit() {
   if (mode === 'play') enterEdit();
   else exitEdit();
+}
+
+// ── 메인(타이틀) 화면 ──
+function showMain() { if (ui.mainScreen) ui.mainScreen.style.display = 'flex'; }
+function hideMain() { if (ui.mainScreen) ui.mainScreen.style.display = 'none'; }
+function onMainStart() {            // Start → 1스테이지부터 플레이
+  hideMain();
+  if (mode === 'edit') exitEdit();
+  gotoLevel(0);
+}
+function onMainEdit() {             // 메인에서 에디터 진입(인게임 버튼 없음)
+  hideMain();
+  if (mode !== 'edit') enterEdit();
 }
 
 // edit 모드 Test: items에서 만든 레벨로 새 SM을 돌린다(진짜 fixed/movable 분리).
@@ -382,7 +398,8 @@ async function main() {
 
   ui.go.addEventListener('click', onGoButton);
   ui.reset.addEventListener('click', onResetButton);
-  if (ui.edit) ui.edit.addEventListener('click', toggleEdit);
+  if (ui.msStart) ui.msStart.addEventListener('click', onMainStart);
+  if (ui.msEdit) ui.msEdit.addEventListener('click', onMainEdit);
   if (ui.hideObj) ui.hideObj.addEventListener('click', toggleHideBodies);
   if (ui.prevLvl) ui.prevLvl.addEventListener('click', () => gotoLevel(levelIdx - 1));
   if (ui.nextLvl) ui.nextLvl.addEventListener('click', () => gotoLevel(levelIdx + 1));
@@ -412,6 +429,7 @@ async function main() {
   window.addEventListener('blur', () => { heldMove.clear(); renderer.setPanDrag(false); }); // 포커스 잃으면 키 고착 방지
 
   startLevel(levelIdx).then(loop);
+  showMain();                       // 시작 시 메인(타이틀) 화면 표시 — Start/에디터로 진입
 }
 
 main();

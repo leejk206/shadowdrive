@@ -89,6 +89,22 @@
     #tutorial button:hover { background: rgba(255,178,77,0.28); }
     #tutorial .tut-skip { background: transparent; color: #9a8b78; border-color: transparent; }
     #tutorial .tut-skip:hover { color: #d8cbbb; background: transparent; }
+
+    /* 메인(타이틀) 화면 */
+    #mainScreen { position: fixed; inset: 0; z-index: 50; display: none;
+                  flex-direction: column; align-items: center; justify-content: center;
+                  background: radial-gradient(ellipse at 50% 38%, rgba(34,25,18,0.97), rgba(8,6,4,0.995));
+                  color: #f0e6da; font-family: system-ui, sans-serif; }
+    #mainScreen .ms-title { margin: 0; font-size: 64px; font-weight: 800; letter-spacing: 2px;
+                            color: #ffd9a0; text-shadow: 0 6px 30px rgba(0,0,0,0.6); }
+    #mainScreen .ms-sub { margin: 12px 0 40px; color: #c9b69c; font-size: 15px; }
+    #mainScreen .ms-btns { display: flex; gap: 16px; }
+    #mainScreen button { font: 600 18px system-ui; padding: 12px 34px; cursor: pointer;
+                         background: rgba(255,178,77,0.16); color: #ffd9a0;
+                         border: 1px solid rgba(255,178,77,0.5); border-radius: 9px; }
+    #mainScreen button:hover { background: rgba(255,178,77,0.3); }
+    #mainScreen #msEdit { background: rgba(80,120,160,0.14); color: #9fd8ff; border-color: rgba(120,180,230,0.45); }
+    #mainScreen #msEdit:hover { background: rgba(80,120,160,0.28); }
   </style>
   <script type="importmap">
   { "imports": {
@@ -101,7 +117,6 @@
   <div id="ui">
     <button id="go">Go</button>
     <button id="reset">Reset</button>
-    <button id="edit">Edit</button>
     <button id="hideObj" title="물체 본체를 숨겨 그림자(도로)만 미리봅니다 (단축키 h)">👁 물체 숨김</button>
     <button id="exportBtn" style="display:none">Export</button>
     <button id="prevLvl" title="이전 스테이지 (←)">◀</button>
@@ -128,6 +143,14 @@
     <span class="row"><span class="sw" style="background:#ffcc33"></span>goal</span>
   </div>
   <div id="banner"></div>
+  <div id="mainScreen">
+    <h1 class="ms-title">ShadowDrive</h1>
+    <p class="ms-sub">빛과 그림자로 길을 만들어 자동차를 목표까지 — Computer Graphics Term Project</p>
+    <div class="ms-btns">
+      <button id="msStart">▶ Start</button>
+      <button id="msEdit">✎ 레벨 에디터</button>
+    </div>
+  </div>
   <script type="module" src="./src/main.js"></script>
 </body>
 </html>
