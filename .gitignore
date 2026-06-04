@@ -5,3 +5,4 @@ node_modules/
 shots/
 .playwright-mcp/
 scratch/
+_imported/
