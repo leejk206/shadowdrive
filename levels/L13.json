@@ -1,15 +1,105 @@
 {
   "id": "L13",
-  "light": { "type": "point", "vec": [9, 11, 14] },
-  "wall": { "width": 18, "height": 10 },
-  "start": [2, 7],
-  "goal": [15, 1],
-  "fixedOccluders": [],
-  "movableOccluders": [
-    { "shape": "bar", "role": "floor", "size": [6, 0.6, 1], "spawn": [6, 6, 6],
-      "allow": { "translate": true, "rotate": true } },
-    { "shape": "bar", "role": "floor", "size": [6, 0.6, 1], "spawn": [12, 6, 6],
-      "allow": { "translate": true, "rotate": true } }
+  "light": {
+    "type": "point",
+    "vec": [
+      9,
+      11,
+      14
+    ]
+  },
+  "wall": {
+    "width": 18,
+    "height": 10
+  },
+  "start": [
+    0,
+    11
   ],
-  "params": { "carSpeed": 6, "gravity": 9.8, "maxClimbDeg": 35, "gapPassRatio": 0.8, "goalHW": 0.9, "goalHH": 1.0 }
+  "goal": [
+    18,
+    7
+  ],
+  "fixedOccluders": [
+    {
+      "shape": "dome",
+      "role": "floor",
+      "size": [
+        8,
+        4,
+        1
+      ],
+      "pos": [
+        9.040058862275432,
+        11.039824419072515,
+        6
+      ],
+      "rot": [
+        0.9998982538351799,
+        -0.011431270238918394,
+        -0.004734254723463692,
+        -0.007098934447970333
+      ]
+    }
+  ],
+  "movableOccluders": [
+    {
+      "shape": "bar",
+      "role": "floor",
+      "size": [
+        5,
+        0.4,
+        1
+      ],
+      "spawn": [
+        9,
+        7,
+        6
+      ],
+      "allow": {
+        "translate": true,
+        "rotate": true
+      }
+    },
+    {
+      "shape": "L",
+      "role": "floor",
+      "size": [
+        5,
+        3,
+        1
+      ],
+      "spawn": [
+        8.984262794706218,
+        5.700215980319549,
+        6
+      ],
+      "rot": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "allow": {
+        "translate": true,
+        "rotate": true
+      }
+    }
+  ],
+  "noShadowZones": [
+    {
+      "x0": 13,
+      "x1": 17,
+      "y0": -3,
+      "y1": 13
+    }
+  ],
+  "params": {
+    "carSpeed": 6,
+    "gravity": 9.8,
+    "maxClimbDeg": 35,
+    "gapPassRatio": 0.8,
+    "goalHW": 0.9,
+    "goalHH": 1
+  }
 }

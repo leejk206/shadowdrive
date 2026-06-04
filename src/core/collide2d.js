@@ -60,6 +60,59 @@ export function convexVsConvex(a, b) {
   return { nx: bnx, ny: bny, depth: best };
 }
 
+// ── 그림자 금지 구역 클리핑: 콜라이더 폴리곤에서 데드존(사각)을 실제로 잘라낸다 ──
+// (단순 충돌-스킵이 아니라 폴리곤을 잘라야 구역 경계에 '벽'이 생겨 차가 막힌다.)
+
+/** 볼록 폴리곤을 반평면 ax*x+ay*y ≤ d 안쪽만 남기고 클립(Sutherland–Hodgman). */
+function clipHalf(poly, ax, ay, d) {
+  const out = [], n = poly.length;
+  for (let i = 0; i < n; i++) {
+    const c = poly[i], w = poly[(i + 1) % n];
+    const cd = ax * c[0] + ay * c[1] - d, wd = ax * w[0] + ay * w[1] - d;
+    if (cd <= 1e-9) out.push(c);
+    if ((cd < 0) !== (wd < 0)) {
+      const t = cd / (cd - wd);
+      out.push([c[0] + t * (w[0] - c[0]), c[1] + t * (w[1] - c[1])]);
+    }
+  }
+  return out;
+}
+
+function polyArea(p) {
+  let a = 0;
+  for (let i = 0; i < p.length; i++) { const [x1, y1] = p[i], [x2, y2] = p[(i + 1) % p.length]; a += x1 * y2 - x2 * y1; }
+  return Math.abs(a) / 2;
+}
+
+function clipChain(poly, planes) {
+  let p = poly;
+  for (const [ax, ay, d] of planes) { p = clipHalf(p, ax, ay, d); if (p.length < 3) return null; }
+  return p;
+}
+
+/** 폴리곤 − 사각(z) = 바깥 convex 4조각(왼/오/아래중앙/위중앙). */
+function subtractRect(poly, z) {
+  const pieces = [
+    clipChain(poly, [[1, 0, z.x0]]),
+    clipChain(poly, [[-1, 0, -z.x1]]),
+    clipChain(poly, [[-1, 0, -z.x0], [1, 0, z.x1], [0, 1, z.y0]]),
+    clipChain(poly, [[-1, 0, -z.x0], [1, 0, z.x1], [0, -1, -z.y1]]),
+  ];
+  return pieces.filter((p) => p && polyArea(p) > 1e-4);
+}
+
+/** 콜라이더 폴리곤들에서 금지구역(사각 배열)을 잘라내 convex 조각 배열로 반환. */
+export function clipToZones(polys, zones) {
+  if (!zones || !zones.length) return polys;
+  let cur = polys.slice();
+  for (const z of zones) {
+    const next = [];
+    for (const p of cur) next.push(...subtractRect(p, z));
+    cur = next;
+  }
+  return cur;
+}
+
 /**
  * 원 vs 볼록 폴리곤(CCW). edge/코너 보로노이 영역 처리.
  * @returns {null | {nx,ny,depth,px,py}} 법선은 poly→원 방향, (px,py) 폴리곤 위 접촉점.
