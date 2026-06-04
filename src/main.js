@@ -19,6 +19,7 @@ const ui = {
   msEdit: document.getElementById('msEdit'),
   mainBtn: document.getElementById('mainBtn'),
   hideObj: document.getElementById('hideObj'),
+  tutBtn: document.getElementById('tutBtn'),
   prevLvl: document.getElementById('prevLvl'),
   nextLvl: document.getElementById('nextLvl'),
   stageTimer: document.getElementById('stageTimer'),
@@ -59,6 +60,15 @@ function tutAdvance() {
   else renderTut();
 }
 function tutHide() { if (ui.tutorial) ui.tutorial.style.display = 'none'; tutSteps = null; }
+// 현재 레벨 안내 문구를 처음부터 다시 표시(이미 본 레벨이어도 강제).
+function replayTutorial() {
+  if (mode !== 'play' || !sm) return;
+  const id = LEVELS[levelIdx];
+  const steps = tutorialFor(id);
+  if (!steps) return;
+  tutSteps = steps; tutIdx = 0; tutId = id;
+  renderTut();
+}
 
 function setPhase(text, color) {
   if (!ui.phase) return;
@@ -413,6 +423,7 @@ async function main() {
   if (ui.msEdit) ui.msEdit.addEventListener('click', onMainEdit);
   if (ui.mainBtn) ui.mainBtn.addEventListener('click', returnToMain);
   if (ui.hideObj) ui.hideObj.addEventListener('click', toggleHideBodies);
+  if (ui.tutBtn) ui.tutBtn.addEventListener('click', replayTutorial);
   if (ui.prevLvl) ui.prevLvl.addEventListener('click', () => gotoLevel(levelIdx - 1));
   if (ui.nextLvl) ui.nextLvl.addEventListener('click', () => gotoLevel(levelIdx + 1));
   if (ui.export) ui.export.addEventListener('click', () => { if (editor) editor._export(); });
