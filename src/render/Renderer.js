@@ -159,18 +159,15 @@ export class Renderer {
     this.wallMesh.geometry = new THREE.PlaneGeometry(wallW, wallH);
     this.wallMesh.position.set(cx, cy, -0.05);
 
-    // ── 플레이 띠 박스 계산 ──
-    // 가로: start.x → goal.x + 좌우 여백. 세로: 가장 낮은 패드 ~ max(startY,goalY)+헤드룸.
-    const startY = start[1], goalY = goal[1];
-    const sx = start[0], gx = goal[0];
-    const xMargin = 2.2;           // 패드/라벨이 잘리지 않게.
-    const roadHeadroom = 4.5;      // 도로 위 떠 있는 오클루더/그림자 자리.
-    const bottomPad = 1.4;         // 패드 아래 약간.
-
-    const boxLeft = Math.min(sx, gx) - xMargin;
-    const boxRight = Math.max(sx, gx) + xMargin;
-    const boxBottom = Math.min(startY, goalY) - bottomPad;
-    const boxTop = Math.max(startY, goalY) + roadHeadroom;
+    // ── 고정 프레이밍 박스 (모든 레벨 공통) ──
+    // start/goal에 의존하지 않는 고정 월드 박스를 프레임에 채운다.
+    //  → 레벨이 바뀌어도 카메라 위치·타깃이 완전히 동일(시점 통일), 일부러 넉넉히 잡아 "멀리서".
+    //  → 박스 중심(9,5.5)에 lookAt, 카메라는 좌·상으로 오프셋되어 광원(point: 9,11,14)이
+    //    화면 중앙에서 비켜난다 → L11 '광원 정면' 눈부심 제거.
+    // 범위: 전 레벨 start/goal(x:-2~19, y:-1~11) + 벽 높이(~12) + 헤드룸을 모두 덮음.
+    const FRAME = { left: -3, right: 21, bottom: -2, top: 13 };
+    const boxLeft = FRAME.left, boxRight = FRAME.right;
+    const boxBottom = FRAME.bottom, boxTop = FRAME.top;
 
     const boxW = boxRight - boxLeft;
     const boxH = boxTop - boxBottom;
